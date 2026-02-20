@@ -2,6 +2,14 @@
 
 
 ---
+US-014: Trend Explorer Page - COMPLETED
+- Branch: US-014
+- PR: https://github.com/hikmetgulsesli/autopress/pull/36
+- Implemented: TrendExplorer.tsx with Google Trends data visualization, keyword table with volume/competition/CPC/trend scores, scoring algorithm (score = volume*0.4 + cpc*0.3 + trend_rising*0.3), region/language filter dropdowns (12 regions, 8 languages), trending chart visualization using recharts AreaChart, 'Bu Konuda Yaz' button redirecting to ContentStudio with pre-filled topic, RSS feed items display section, RSS API routes for fetching news feeds
+- Tests: 15 tests for TrendExplorer page (all 36 tests passing)
+- Completed: Fri Feb 20 16:07:00 +03 2026
+
+---
 US-013: RSS Feed Aggregator Service - COMPLETED
 - Branch: US-013
 - PR: https://github.com/hikmetgulsesli/autopress/pull/34
