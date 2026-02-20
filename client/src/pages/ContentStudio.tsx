@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle } from 'lucide-react';
 import { TipTapEditor } from '../components/TipTapEditor';
 import ImageSearch from '../components/ImageSearch';
 import ImageAttribution from '../components/ImageAttribution';
+import { useArticleLoader } from '../hooks/useArticleLoader';
 import type { ImageSearchResult } from '../types';
 
 export default function ContentStudio() {
@@ -11,6 +12,16 @@ export default function ContentStudio() {
   const [isPreview, setIsPreview] = useState(false);
   const [featuredImage, setFeaturedImage] = useState<ImageSearchResult | null>(null);
   const [showImageSearch, setShowImageSearch] = useState(false);
+  
+  const { article, isLoading, error } = useArticleLoader();
+
+  // Load article data when fetched from URL param
+  useEffect(() => {
+    if (article) {
+      setTitle(article.title || '');
+      setContent(article.content || '');
+    }
+  }, [article]);
 
   const handleSave = () => {
     // TODO: Save article to backend
@@ -25,6 +36,35 @@ export default function ContentStudio() {
   const handleRemoveImage = () => {
     setFeaturedImage(null);
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 data-testid="loading-spinner" className="w-8 h-8 text-primary-400 animate-spin" />
+          <p className="text-text-muted">Makale yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4 text-center max-w-md">
+          <div className="w-12 h-12 bg-error/10 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-6 h-6 text-error" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-text">Yükleme Hatası</h2>
+            <p className="text-text-muted mt-1">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
