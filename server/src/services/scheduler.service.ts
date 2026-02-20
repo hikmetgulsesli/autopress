@@ -3,6 +3,7 @@ import { query } from '../db/connection';
 import { logger } from '../utils/logger';
 import * as wordpressService from './wordpress.service';
 import * as searchConsoleService from './searchconsole.service';
+import { pollAllFeeds } from './rss.service';
 
 // Types
 export type PublishStatus = 'pending' | 'publishing' | 'published' | 'failed' | 'cancelled';
@@ -60,7 +61,9 @@ const DEFAULT_CONFIG: SchedulerConfig = {
 
 // Scheduler state
 let schedulerTask: cron.ScheduledTask | null = null;
+let rssSchedulerTask: cron.ScheduledTask | null = null;
 let isRunning = false;
+let isRssRunning = false;
 
 /**
  * Generate random jitter in minutes (±15 minutes by default)
@@ -520,6 +523,30 @@ export const getScheduledArticles = async (
 };
 
 /**
+ * Poll RSS feeds (runs every hour)
+ */
+export const pollRssFeeds = async (): Promise<void> => {
+  if (isRssRunning) {
+    logger.warn('RSS polling is already running, skipping this cycle');
+    return;
+  }
+
+  isRssRunning = true;
+  try {
+    logger.info('Starting RSS feed polling...');
+    const results = await pollAllFeeds();
+    const totalNew = results.reduce((sum, r) => sum + r.new, 0);
+    const totalFetched = results.reduce((sum, r) => sum + r.fetched, 0);
+    const errors = results.filter(r => r.error).length;
+    logger.info(`RSS polling complete: ${totalFetched} items fetched, ${totalNew} new, ${errors} errors`);
+  } catch (err) {
+    logger.error('Error in RSS polling:', err);
+  } finally {
+    isRssRunning = false;
+  }
+};
+
+/**
  * Start the scheduler cron job
  */
 export const startScheduler = (config: Partial<SchedulerConfig> = {}): void => {
@@ -555,6 +582,21 @@ export const startScheduler = (config: Partial<SchedulerConfig> = {}): void => {
     }
   );
 
+  // Start RSS polling scheduler (every hour)
+  if (!rssSchedulerTask) {
+    rssSchedulerTask = cron.schedule(
+      '0 * * * *', // Every hour at minute 0
+      async () => {
+        await pollRssFeeds();
+      },
+      {
+        scheduled: true,
+        timezone: finalConfig.timezone,
+      }
+    );
+    logger.info('RSS polling scheduler started (every hour)');
+  }
+
   logger.info('Scheduler started successfully');
 };
 
@@ -565,8 +607,14 @@ export const stopScheduler = (): void => {
   if (schedulerTask) {
     schedulerTask.stop();
     schedulerTask = null;
-    logger.info('Scheduler stopped');
-  } else {
+    logger.info('Publish scheduler stopped');
+  }
+  if (rssSchedulerTask) {
+    rssSchedulerTask.stop();
+    rssSchedulerTask = null;
+    logger.info('RSS scheduler stopped');
+  }
+  if (!schedulerTask && !rssSchedulerTask) {
     logger.warn('Scheduler is not running');
   }
 };
@@ -577,11 +625,15 @@ export const stopScheduler = (): void => {
 export const getSchedulerStatus = (): {
   running: boolean;
   isProcessing: boolean;
+  rssRunning: boolean;
+  isRssPolling: boolean;
   config: SchedulerConfig;
 } => {
   return {
     running: schedulerTask !== null,
     isProcessing: isRunning,
+    rssRunning: rssSchedulerTask !== null,
+    isRssPolling: isRssRunning,
     config: DEFAULT_CONFIG,
   };
 };

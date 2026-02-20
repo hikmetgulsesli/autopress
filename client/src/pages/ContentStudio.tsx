@@ -1,9 +1,12 @@
-import { useState } from 'react';
-import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle } from 'lucide-react';
 import { TipTapEditor } from '../components/TipTapEditor';
 import ImageSearch from '../components/ImageSearch';
 import ImageAttribution from '../components/ImageAttribution';
-import type { ImageSearchResult } from '../types';
+import { useArticleLoader } from '../hooks/useArticleLoader';
+import { notify } from '../utils/toast';
+import api from '../services/api';
+import type { ImageSearchResult, Article } from '../types';
 
 export default function ContentStudio() {
   const [title, setTitle] = useState('');
@@ -11,10 +14,56 @@ export default function ContentStudio() {
   const [isPreview, setIsPreview] = useState(false);
   const [featuredImage, setFeaturedImage] = useState<ImageSearchResult | null>(null);
   const [showImageSearch, setShowImageSearch] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const { article, isLoading, error } = useArticleLoader();
 
-  const handleSave = () => {
-    // TODO: Save article to backend
-    console.log('Saving article:', { title, content, featuredImage });
+  // Load article data when fetched from URL param
+  useEffect(() => {
+    if (article) {
+      setTitle(article.title || '');
+      setContent(article.content || '');
+    }
+  }, [article]);
+
+  const handleSave = async () => {
+    if (!title.trim() || !content.trim()) {
+      notify.error('Başlık ve içerik alanları zorunludur');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const articleData = {
+        title: title.trim(),
+        content,
+        excerpt: content.slice(0, 200).replace(/<[^\u003e]*>/g, '') + '...',
+        featured_image_url: featuredImage?.url || null,
+      };
+
+      let savedArticle: Article;
+
+      if (article?.id) {
+        // Update existing article
+        const response = await api.put(`/articles/${article.id}`, articleData);
+        savedArticle = response.data;
+        notify.success('Makale başarıyla güncellendi');
+      } else {
+        // Create new article
+        const response = await api.post('/articles', articleData);
+        savedArticle = response.data;
+        notify.success('Makale başarıyla kaydedildi');
+      }
+
+      return savedArticle;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'Makale kaydedilirken bir hata oluştu';
+      notify.error(errorMessage);
+      throw err;
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSelectImage = (image: ImageSearchResult) => {
@@ -25,6 +74,35 @@ export default function ContentStudio() {
   const handleRemoveImage = () => {
     setFeaturedImage(null);
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 data-testid="loading-spinner" className="w-8 h-8 text-primary-400 animate-spin" />
+          <p className="text-text-muted">Makale yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4 text-center max-w-md">
+          <div className="w-12 h-12 bg-error/10 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-6 h-6 text-error" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-text">Yükleme Hatası</h2>
+            <p className="text-text-muted mt-1">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -54,10 +132,20 @@ export default function ContentStudio() {
           <button
             type="button"
             onClick={handleSave}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            disabled={isSaving}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4" />
-            Kaydet
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Kaydediliyor...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Kaydet
+              </>
+            )}
           </button>
         </div>
       </div>

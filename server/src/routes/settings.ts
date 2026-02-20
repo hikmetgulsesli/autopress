@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
 import { query } from '../db/connection';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { validateBody, validateParams } from '../middleware/validate';
+import { updateSettingSchema, settingKeyParamSchema } from '../middleware/schemas';
 
 const router = Router();
 router.use(authenticate);
@@ -8,7 +10,7 @@ router.use(authenticate);
 router.get('/', async (_req: AuthRequest, res: Response) => {
   try {
     const result = await query('SELECT * FROM settings ORDER BY key');
-    const settings: Record<string, any> = {};
+    const settings: Record<string, unknown> = {};
     for (const row of result.rows) {
       if (row.type === 'number') settings[row.key] = Number(row.value);
       else if (row.type === 'boolean') settings[row.key] = row.value === 'true';
@@ -21,7 +23,7 @@ router.get('/', async (_req: AuthRequest, res: Response) => {
   }
 });
 
-router.put('/:key', async (req: AuthRequest, res: Response) => {
+router.put('/:key', validateParams(settingKeyParamSchema), validateBody(updateSettingSchema), async (req: AuthRequest, res: Response) => {
   try {
     const { value, type } = req.body;
     const result = await query(

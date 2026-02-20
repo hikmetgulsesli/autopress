@@ -1,29 +1,20 @@
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { validateQuery } from '../middleware/validate';
 import { searchImages, getRandomImage, ImageServiceError } from '../services/image.service';
+import { imageSearchQuerySchema, randomImageQuerySchema } from '../middleware/schemas';
 
 const router = Router();
 router.use(authenticate);
 
 // GET /api/images/search?q=query&page=1&per_page=12
-router.get('/search', async (req: AuthRequest, res: Response) => {
+router.get('/search', validateQuery(imageSearchQuerySchema), async (req: AuthRequest, res: Response) => {
   try {
-    const { q, page = '1', per_page = '12' } = req.query;
+    const q = req.query.q as string;
+    const page = Number(req.query.page);
+    const per_page = Number(req.query.per_page);
 
-    if (!q || typeof q !== 'string') {
-      return res.status(400).json({
-        error: {
-          code: 'INVALID_QUERY',
-          message: 'Search query (q) is required',
-        },
-      });
-    }
-
-    const result = await searchImages(
-      q,
-      parseInt(page as string, 10),
-      parseInt(per_page as string, 10)
-    );
+    const result = await searchImages(q, page, per_page);
 
     res.json({
       data: result.results,
@@ -82,10 +73,10 @@ router.get('/search', async (req: AuthRequest, res: Response) => {
 });
 
 // GET /api/images/random?q=optional-query
-router.get('/random', async (req: AuthRequest, res: Response) => {
+router.get('/random', validateQuery(randomImageQuerySchema), async (req: AuthRequest, res: Response) => {
   try {
-    const { q } = req.query;
-    const image = await getRandomImage(typeof q === 'string' ? q : undefined);
+    const q = req.query.q as string | undefined;
+    const image = await getRandomImage(q);
     res.json({ data: image });
   } catch (err) {
     const error = err as ImageServiceError;

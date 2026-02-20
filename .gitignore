@@ -5,4 +5,4 @@ dist/
 .DS_Store
 .vite/
 .worktrees/
-node_modules
+client/node_modules
