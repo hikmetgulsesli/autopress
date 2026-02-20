@@ -1,11 +1,19 @@
 
 
 ---
-US-003: TipTap WYSIWYG Editor Integration - COMPLETED
-- Branch: US-003
-- PR: https://github.com/hikmetgulsesli/autopress/pull/8
-- Implemented: TipTap editor with toolbar (headings, bold, italic, lists, links), integrated into ContentStudio
-- Completed: Fri Feb 20 13:30:00 +03 2026
+US-008: Scheduled Publishing & Cron Service - COMPLETED
+- Branch: US-008
+- PR: https://github.com/hikmetgulsesli/autopress/pull/25
+- Implemented: node-cron scheduler, publish queue with status tracking, random jitter (±15min), retry logic (max 3), publish_history logging
+- Tests: 28 tests for scheduler service
+- Completed: Fri Feb 20 14:54:00 +03 2026
+
+---
+US-006: Blogger API Integration Service - COMPLETED
+- Branch: US-006
+- PR: https://github.com/hikmetgulsesli/autopress/pull/6
+- Implemented: Blogger API integration with OAuth 2.0, blog listing, post/page publishing
+- Completed: Fri Feb 20 12:41:00 +03 2026
 
 ---
 US-001: Design System & CSS Custom Properties - COMPLETED

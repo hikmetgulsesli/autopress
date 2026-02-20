@@ -286,3 +286,138 @@
     margin-bottom: 0;
   }
 }
+
+/* React Big Calendar Dark Theme Overrides */
+.rbc-calendar {
+  background-color: var(--color-surface-alt);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+.rbc-header {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  padding: 8px;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.rbc-month-view,
+.rbc-time-view,
+.rbc-agenda-view {
+  border-color: var(--color-border);
+}
+
+.rbc-month-row + .rbc-month-row,
+.rbc-day-bg + .rbc-day-bg,
+.rbc-header + .rbc-header {
+  border-color: var(--color-border);
+}
+
+.rbc-today {
+  background-color: var(--color-primary-400) / 10%;
+  background-color: rgba(var(--color-primary-400-rgb, 34, 211, 238), 0.1);
+}
+
+.rbc-off-range-bg {
+  background-color: var(--color-surface);
+  opacity: 0.5;
+}
+
+.rbc-date-cell {
+  color: var(--color-text);
+  padding: 4px 8px;
+}
+
+.rbc-date-cell.rbc-now {
+  color: var(--color-primary-400);
+  font-weight: 600;
+}
+
+.rbc-button-link {
+  color: var(--color-text);
+}
+
+.rbc-event {
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  border: none;
+}
+
+.rbc-event-content {
+  color: white;
+  font-weight: 500;
+}
+
+.rbc-selected-cell {
+  background-color: var(--color-primary-400) / 20%;
+  background-color: rgba(var(--color-primary-400-rgb, 34, 211, 238), 0.2);
+}
+
+.rbc-show-more {
+  color: var(--color-primary-400);
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: transparent;
+}
+
+.rbc-show-more:hover {
+  color: var(--color-primary-500);
+}
+
+.rbc-toolbar {
+  display: none;
+}
+
+.rbc-time-content,
+.rbc-time-header-content,
+.rbc-time-column,
+.rbc-timeslot-group {
+  border-color: var(--color-border);
+}
+
+.rbc-time-slot {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.rbc-current-time-indicator {
+  background-color: var(--color-primary-400);
+  height: 2px;
+}
+
+.rbc-agenda-table {
+  border-color: var(--color-border);
+}
+
+.rbc-agenda-table th {
+  background-color: var(--color-surface);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  font-weight: 500;
+  padding: 12px;
+}
+
+.rbc-agenda-table td {
+  border-color: var(--color-border);
+  color: var(--color-text);
+  padding: 12px;
+}
+
+.rbc-agenda-time-cell {
+  color: var(--color-text-muted);
+}
+
+.rbc-agenda-event-cell {
+  color: var(--color-text);
+}
+
+.rbc-agenda-empty {
+  color: var(--color-text-muted);
+  padding: 24px;
+  text-align: center;
+}
