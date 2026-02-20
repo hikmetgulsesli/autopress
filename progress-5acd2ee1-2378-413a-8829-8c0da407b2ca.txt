@@ -1,6 +1,14 @@
 
 
 ---
+US-010: Google Search Console Indexing API - COMPLETED
+- Branch: US-010
+- PR: https://github.com/hikmetgulsesli/autopress/pull/29
+- Implemented: searchconsole.service.ts with Google Search Console API integration, URL indexing submission (URL_UPDATED/URL_DELETED), index status checking, URL notification metadata, batch URL submission, auto-submit after publish integration
+- Tests: 29 tests for search console service
+- Completed: Fri Feb 20 15:48:00 +03 2026
+
+---
 US-008: Scheduled Publishing & Cron Service - COMPLETED
 - Branch: US-008
 - PR: https://github.com/hikmetgulsesli/autopress/pull/25
