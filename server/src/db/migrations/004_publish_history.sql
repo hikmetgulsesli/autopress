@@ -1,13 +1,8 @@
--- Create publish_history table for WordPress publishing history
-CREATE TABLE IF NOT EXISTS publish_history (
-  id SERIAL PRIMARY KEY,
-  article_id INTEGER NOT NULL,
-  wordpress_id INTEGER NOT NULL,
-  wordpress_url TEXT NOT NULL,
-  status VARCHAR(50) NOT NULL,
-  published_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
+-- Migration 004: Publish History Table
+-- NOTE: This migration is DEPRECATED and kept for historical compatibility only.
+-- The publish_history table is already created in 001_initial.sql with a different schema.
+-- The enhanced version with additional columns is in 005_scheduler.sql.
+-- This file intentionally does nothing to avoid conflicts.
 
-CREATE INDEX IF NOT EXISTS idx_publish_history_article_id ON publish_history(article_id);
-CREATE INDEX IF NOT EXISTS idx_publish_history_wordpress_id ON publish_history(wordpress_id);
+-- Add a comment to document this
+COMMENT ON TABLE publish_history IS 'Publish history table - created in 001_initial.sql, enhanced in 005_scheduler.sql';
