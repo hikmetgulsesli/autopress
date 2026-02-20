@@ -91,3 +91,25 @@ export interface PublishQueueItem {
   scheduled_at: string;
   site_name?: string;
 }
+
+export interface ImageSearchResult {
+  id: string;
+  url: string;
+  thumbUrl: string;
+  description: string | null;
+  altDescription: string | null;
+  width: number;
+  height: number;
+  photographer: {
+    name: string;
+    username: string;
+    portfolioUrl: string;
+  };
+  color: string | null;
+}
+
+export interface ImageSearchMeta {
+  total: number;
+  totalPages: number;
+  page: number;
+}
