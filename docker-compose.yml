@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  server:
+    build: ./server
+    ports:
+      - '4519:4519'
+    environment:
+      - DATABASE_URL=postgresql://postgres:lckdvtbwghdzhxxh@72.61.186.46:37550/autopress
+      - JWT_SECRET=autopress_jwt_secret_key_2026_very_secure_random
+      - JWT_REFRESH_SECRET=autopress_jwt_refresh_secret_2026_very_secure
+      - PORT=4519
+      - CORS_ORIGIN=http://localhost:3519
+      - NODE_ENV=production
+    restart: unless-stopped
+
+  client:
+    build: ./client
+    ports:
+      - '3519:3519'
+    depends_on:
+      - server
+    restart: unless-stopped
