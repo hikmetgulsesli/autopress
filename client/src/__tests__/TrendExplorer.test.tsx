@@ -13,7 +13,17 @@ vi.mock('../services/api', () => ({
 
 const mockApi = api as unknown as { get: ReturnType<typeof vi.fn> };
 
-describe('TrendExplorer', () => {
+// Mock useNavigate
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+describe('TrendExplorer - Create Article Button', () => {
   const mockTrends = [
     {
       id: 1,
@@ -51,34 +61,7 @@ describe('TrendExplorer', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the TrendExplorer page without placeholder', () => {
-    mockApi.get.mockResolvedValueOnce({ data: mockTrends });
-    
-    render(
-      <BrowserRouter>
-        <TrendExplorer />
-      </BrowserRouter>
-    );
-
-    expect(screen.getByText('Trend Explorer')).toBeInTheDocument();
-    expect(screen.getByText('Güncel trendleri keşfedin ve analiz edin')).toBeInTheDocument();
-  });
-
-  it('displays country/region dropdown filter', () => {
-    mockApi.get.mockResolvedValueOnce({ data: mockTrends });
-    
-    render(
-      <BrowserRouter>
-        <TrendExplorer />
-      </BrowserRouter>
-    );
-
-    const regionSelect = screen.getByLabelText('Bölge filtresi');
-    expect(regionSelect).toBeInTheDocument();
-    expect(regionSelect).toHaveValue('all');
-  });
-
-  it('displays trends list with title, score, and news count', async () => {
+  it('renders Create Article button on each trend card', async () => {
     mockApi.get.mockResolvedValueOnce({ data: mockTrends });
     
     render(
@@ -91,41 +74,159 @@ describe('TrendExplorer', () => {
       expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
     });
 
-    // Check titles
+    // Check that Create Article buttons are rendered for each trend
+    const createButtons = screen.getAllByText('Create Article');
+    expect(createButtons).toHaveLength(3);
+  });
+
+  it('navigates to ContentStudio with topic query parameter when Create Article is clicked', async () => {
+    mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+    
+    render(
+      <BrowserRouter>
+        <TrendExplorer />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+    });
+
+    // Click the Create Article button for the first trend
+    const createButtons = screen.getAllByText('Create Article');
+    fireEvent.click(createButtons[0]);
+
+    // Verify navigation with correct topic
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/content?topic=Yapay%20Zeka');
+    });
+  });
+
+  it('encodes special characters in topic URL parameter', async () => {
+    const specialTrend = {
+      id: 4,
+      topic: 'AI & Machine Learning: The Future',
+      score: 90,
+      source: 'Google Trends',
+      language: 'en',
+      region: 'US',
+      raw_data: {},
+      checked_at: '2024-01-15T10:00:00Z',
+    };
+    
+    mockApi.get.mockResolvedValueOnce({ data: [specialTrend] });
+    
+    render(
+      <BrowserRouter>
+        <TrendExplorer />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('AI & Machine Learning: The Future')).toBeInTheDocument();
+    });
+
+    const createButton = screen.getByText('Create Article');
+    fireEvent.click(createButton);
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/content?topic=AI%20%26%20Machine%20Learning%3A%20The%20Future');
+    });
+  });
+
+  it('shows loading state on Create Article button while navigating', async () => {
+    mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+    
+    render(
+      <BrowserRouter>
+        <TrendExplorer />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+    });
+
+    const createButtons = screen.getAllByText('Create Article');
+    fireEvent.click(createButtons[0]);
+
+    // Check that button shows loading state
+    await waitFor(() => {
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+    });
+  });
+
+  it('disables Create Article button while loading', async () => {
+    mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+    
+    render(
+      <BrowserRouter>
+        <TrendExplorer />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+    });
+
+    const createButtons = screen.getAllByText('Create Article');
+    fireEvent.click(createButtons[0]);
+
+    // Check that the clicked button is disabled
+    await waitFor(() => {
+      const loadingButton = screen.getByText('Loading...').closest('button');
+      expect(loadingButton).toBeDisabled();
+    });
+  });
+
+  it('has accessible aria-label on Create Article buttons', async () => {
+    mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+    
+    render(
+      <BrowserRouter>
+        <TrendExplorer />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+    });
+
+    // Check for accessible button labels
+    expect(screen.getByLabelText('Create article about Yapay Zeka')).toBeInTheDocument();
+    expect(screen.getByLabelText('Create article about Climate Change')).toBeInTheDocument();
+    expect(screen.getByLabelText('Create article about Ekonomi')).toBeInTheDocument();
+  });
+
+  it('renders trend information correctly', async () => {
+    mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+    
+    render(
+      <BrowserRouter>
+        <TrendExplorer />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+    });
+
+    // Check trend titles
     expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
     expect(screen.getByText('Climate Change')).toBeInTheDocument();
     expect(screen.getByText('Ekonomi')).toBeInTheDocument();
 
-    // Check scores
+    // Check scores are displayed
     expect(screen.getByText('95')).toBeInTheDocument();
     expect(screen.getByText('88')).toBeInTheDocument();
     expect(screen.getByText('72')).toBeInTheDocument();
+
+    // Check regions
+    expect(screen.getAllByText('TR')).toHaveLength(2);
+    expect(screen.getByText('US')).toBeInTheDocument();
   });
 
-  it('updates list when filter changes', async () => {
-    mockApi.get.mockResolvedValueOnce({ data: mockTrends });
-    mockApi.get.mockResolvedValueOnce({ data: [mockTrends[1]] }); // Only US trend
-    
-    render(
-      <BrowserRouter>
-        <TrendExplorer />
-      </BrowserRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
-    });
-
-    const regionSelect = screen.getByLabelText('Bölge filtresi');
-    fireEvent.change(regionSelect, { target: { value: 'US' } });
-
-    await waitFor(() => {
-      expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('region=US'));
-    });
-  });
-
-  it('shows loading state during fetch', () => {
-    // Delay the resolution to keep loading state
+  it('shows loading state while fetching trends', () => {
     mockApi.get.mockImplementation(() => new Promise(() => {}));
     
     render(
@@ -134,11 +235,11 @@ describe('TrendExplorer', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText('Trendler yükleniyor...')).toBeInTheDocument();
+    expect(screen.getByText('Loading trends...')).toBeInTheDocument();
   });
 
-  it('shows error state on failure', async () => {
-    mockApi.get.mockRejectedValueOnce(new Error('Network error'));
+  it('shows error state when API fails', async () => {
+    mockApi.get.mockRejectedValueOnce({ response: { data: { error: 'Failed to fetch trends' } } });
     
     render(
       <BrowserRouter>
@@ -147,34 +248,11 @@ describe('TrendExplorer', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Bir hata oluştu')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('Network error')).toBeInTheDocument();
-  });
-
-  it('shows retry button on error', async () => {
-    mockApi.get.mockRejectedValueOnce(new Error('Network error'));
-    mockApi.get.mockResolvedValueOnce({ data: mockTrends });
-    
-    render(
-      <BrowserRouter>
-        <TrendExplorer />
-      </BrowserRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Tekrar Dene')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('Tekrar Dene'));
-
-    await waitFor(() => {
-      expect(mockApi.get).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Failed to fetch trends')).toBeInTheDocument();
     });
   });
 
-  it('shows empty state when no trends', async () => {
+  it('shows empty state when no trends available', async () => {
     mockApi.get.mockResolvedValueOnce({ data: [] });
     
     render(
@@ -184,11 +262,14 @@ describe('TrendExplorer', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Henüz trend yok')).toBeInTheDocument();
+      expect(screen.getByText('No Trends Available')).toBeInTheDocument();
     });
+
+    expect(screen.getByText('Check back later for trending topics')).toBeInTheDocument();
   });
 
-  it('displays trend count', async () => {
+  it('allows retry when error occurs', async () => {
+    mockApi.get.mockRejectedValueOnce({ response: { data: { error: 'Network error' } } });
     mockApi.get.mockResolvedValueOnce({ data: mockTrends });
     
     render(
@@ -198,22 +279,17 @@ describe('TrendExplorer', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('3 trend bulundu')).toBeInTheDocument();
+      expect(screen.getByText('Try Again')).toBeInTheDocument();
     });
-  });
 
-  it('renders region options correctly', () => {
-    mockApi.get.mockResolvedValueOnce({ data: mockTrends });
-    
-    render(
-      <BrowserRouter>
-        <TrendExplorer />
-      </BrowserRouter>
-    );
+    fireEvent.click(screen.getByText('Try Again'));
 
-    const regionSelect = screen.getByLabelText('Bölge filtresi');
-    expect(regionSelect).toContainElement(screen.getByText('Tüm Bölgeler'));
-    expect(regionSelect).toContainElement(screen.getByText('Türkiye'));
-    expect(regionSelect).toContainElement(screen.getByText('ABD'));
+    await waitFor(() => {
+      expect(mockApi.get).toHaveBeenCalledTimes(2);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+    });
   });
 });
