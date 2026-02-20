@@ -65,6 +65,14 @@ US-006: Blogger API Integration Service - COMPLETED
 - Completed: Fri Feb 20 12:41:00 +03 2026
 
 ---
+US-016: Environment Variable Validation & Secure Configuration - COMPLETED
+- Branch: US-016
+- PR: https://github.com/hikmetgulsesli/autopress/pull/41
+- Implemented: config.ts with Zod schema for env validation (JWT_SECRET >= 32 chars, JWT_REFRESH_SECRET, DATABASE_URL format, CORS_ORIGIN), password policy constants (min 12 chars, complexity requirements), updated auth middleware/routes/index.ts to use validated config, updated .env.example with comprehensive documentation
+- Tests: 17 tests for config validation (all 209 tests passing)
+- Completed: Fri Feb 20 19:34:00 +03 2026
+
+---
 US-001: Design System & CSS Custom Properties - COMPLETED
 - Branch: US-001
 - PR: https://github.com/hikmetgulsesli/autopress/pull/1
