@@ -114,3 +114,57 @@ export interface ImageSearchMeta {
   totalPages: number;
   page: number;
 }
+
+export type SecurityEventType =
+  | 'LOGIN_SUCCESS'
+  | 'LOGIN_FAILURE'
+  | 'LOGOUT'
+  | 'PASSWORD_CHANGE'
+  | 'UNAUTHORIZED_ACCESS'
+  | 'RATE_LIMIT_HIT';
+
+export interface SecurityEventDetails {
+  reason?: string;
+  [key: string]: unknown;
+}
+
+export interface AuditLog {
+  id: number;
+  event_type: SecurityEventType;
+  user_id: number | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  details: SecurityEventDetails | null;
+  created_at: string;
+}
+
+export interface SecurityStats {
+  totalEvents: number;
+  eventsByType: Record<SecurityEventType, number>;
+  uniqueIps: number;
+  uniqueUsers: number;
+}
+
+export interface RateLimitStats {
+  windowMs: number;
+  maxRequests: number;
+  currentRequests: number;
+  remainingRequests: number;
+  resetTime: string;
+}
+
+export interface SecurityHeadersStatus {
+  contentSecurityPolicy: boolean;
+  hsts: boolean;
+  frameguard: boolean;
+  noSniff: boolean;
+  referrerPolicy: boolean;
+  allEnabled: boolean;
+}
+
+export interface LockedAccount {
+  id: number;
+  email: string;
+  failed_login_attempts: number;
+  locked_until: string;
+}

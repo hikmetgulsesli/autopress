@@ -1,6 +1,13 @@
 import { Router, Response } from 'express';
 import { query } from '../db/connection';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { validateBody, validateParams } from '../middleware/validate';
+import {
+  scheduleArticleSchema,
+  rescheduleArticleSchema,
+  articleIdParamSchema,
+  publishNowSchema,
+} from '../middleware/schemas';
 
 const router = Router();
 router.use(authenticate);
@@ -64,28 +71,8 @@ router.get('/schedules', async (_req: AuthRequest, res: Response) => {
 });
 
 // Schedule an article for publishing
-router.post('/schedule', async (req: AuthRequest, res: Response) => {
+router.post('/schedule', validateBody(scheduleArticleSchema), async (req: AuthRequest, res: Response) => {
   const { articleId, siteId, platform, scheduledAt } = req.body;
-
-  if (!articleId || !siteId || !platform || !scheduledAt) {
-    res.status(400).json({ 
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'articleId, siteId, platform ve scheduledAt gereklidir'
-      }
-    });
-    return;
-  }
-
-  if (!['wordpress', 'blogger'].includes(platform)) {
-    res.status(400).json({ 
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'Platform wordpress veya blogger olmalıdır'
-      }
-    });
-    return;
-  }
 
   try {
     // Update article status to scheduled
@@ -117,7 +104,7 @@ router.post('/schedule', async (req: AuthRequest, res: Response) => {
 });
 
 // Cancel a scheduled publish
-router.delete('/schedule/:articleId', async (req: AuthRequest, res: Response) => {
+router.delete('/schedule/:articleId', validateParams(articleIdParamSchema), async (req: AuthRequest, res: Response) => {
   const { articleId } = req.params;
 
   try {
@@ -149,19 +136,9 @@ router.delete('/schedule/:articleId', async (req: AuthRequest, res: Response) =>
 });
 
 // Reschedule an article
-router.patch('/schedule/:articleId', async (req: AuthRequest, res: Response) => {
+router.patch('/schedule/:articleId', validateParams(articleIdParamSchema), validateBody(rescheduleArticleSchema), async (req: AuthRequest, res: Response) => {
   const { articleId } = req.params;
   const { scheduledAt } = req.body;
-
-  if (!scheduledAt) {
-    res.status(400).json({ 
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'scheduledAt gereklidir'
-      }
-    });
-    return;
-  }
 
   try {
     // Update article publish date
@@ -191,18 +168,8 @@ router.patch('/schedule/:articleId', async (req: AuthRequest, res: Response) => 
 });
 
 // Publish immediately
-router.post('/publish-now', async (req: AuthRequest, res: Response) => {
+router.post('/publish-now', validateBody(publishNowSchema), async (req: AuthRequest, res: Response) => {
   const { articleId, siteId, platform } = req.body;
-
-  if (!articleId || !siteId || !platform) {
-    res.status(400).json({ 
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'articleId, siteId ve platform gereklidir'
-      }
-    });
-    return;
-  }
 
   try {
     // Get article content

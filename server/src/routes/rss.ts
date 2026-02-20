@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { query } from '../db/connection';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { validateBody, validateQuery, validateParams } from '../middleware/validate';
 import {
   createFeed,
   getFeeds,
@@ -17,6 +18,15 @@ import {
   getFeedStats,
   parseFeed,
 } from '../services/rss.service';
+import {
+  createFeedSchema,
+  updateFeedSchema,
+  feedIdParamSchema,
+  testFeedSchema,
+  rssItemsQuerySchema,
+  rssItemIdParamSchema,
+  trendAnalysisQuerySchema,
+} from '../middleware/schemas';
 
 const router = Router();
 router.use(authenticate);
@@ -38,30 +48,9 @@ router.get('/feeds', async (req: AuthRequest, res: Response) => {
 });
 
 // Create new RSS feed
-router.post('/feeds', async (req: AuthRequest, res: Response) => {
+router.post('/feeds', validateBody(createFeedSchema), async (req: AuthRequest, res: Response) => {
   try {
     const { name, url, description, category, language, isActive, fetchIntervalMinutes } = req.body;
-
-    if (!name || !url) {
-      return res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Name and URL are required',
-        },
-      });
-    }
-
-    // Validate URL format
-    try {
-      new URL(url);
-    } catch {
-      return res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid URL format',
-        },
-      });
-    }
 
     const feed = await createFeed({
       name,
@@ -93,18 +82,9 @@ router.post('/feeds', async (req: AuthRequest, res: Response) => {
 });
 
 // Get RSS feed by ID
-router.get('/feeds/:id', async (req: AuthRequest, res: Response) => {
+router.get('/feeds/:id', validateParams(feedIdParamSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const feedId = parseInt(req.params.id as string, 10);
-    if (isNaN(feedId)) {
-      return res.status(400).json({
-        error: {
-          code: 'INVALID_ID',
-          message: 'Invalid feed ID',
-        },
-      });
-    }
-
+    const feedId = req.params.id as unknown as number;
     const feed = await getFeedById(feedId);
     if (!feed) {
       return res.status(404).json({
@@ -127,33 +107,10 @@ router.get('/feeds/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // Update RSS feed
-router.patch('/feeds/:id', async (req: AuthRequest, res: Response) => {
+router.patch('/feeds/:id', validateParams(feedIdParamSchema), validateBody(updateFeedSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const feedId = parseInt(req.params.id as string, 10);
-    if (isNaN(feedId)) {
-      return res.status(400).json({
-        error: {
-          code: 'INVALID_ID',
-          message: 'Invalid feed ID',
-        },
-      });
-    }
-
+    const feedId = req.params.id as unknown as number;
     const { name, url, description, category, language, isActive, fetchIntervalMinutes } = req.body;
-
-    // Validate URL if provided
-    if (url) {
-      try {
-        new URL(url);
-      } catch {
-        return res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid URL format',
-          },
-        });
-      }
-    }
 
     const feed = await updateFeed(feedId, {
       name,
@@ -194,18 +151,9 @@ router.patch('/feeds/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // Delete RSS feed
-router.delete('/feeds/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/feeds/:id', validateParams(feedIdParamSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const feedId = parseInt(req.params.id as string, 10);
-    if (isNaN(feedId)) {
-      return res.status(400).json({
-        error: {
-          code: 'INVALID_ID',
-          message: 'Invalid feed ID',
-        },
-      });
-    }
-
+    const feedId = req.params.id as unknown as number;
     const deleted = await deleteFeed(feedId);
     if (!deleted) {
       return res.status(404).json({
@@ -228,18 +176,9 @@ router.delete('/feeds/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // Fetch feed manually
-router.post('/feeds/:id/fetch', async (req: AuthRequest, res: Response) => {
+router.post('/feeds/:id/fetch', validateParams(feedIdParamSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const feedId = parseInt(req.params.id as string, 10);
-    if (isNaN(feedId)) {
-      return res.status(400).json({
-        error: {
-          code: 'INVALID_ID',
-          message: 'Invalid feed ID',
-        },
-      });
-    }
-
+    const feedId = req.params.id as unknown as number;
     const result = await fetchFeed(feedId);
     res.json({ data: result });
   } catch (err: any) {
@@ -254,18 +193,9 @@ router.post('/feeds/:id/fetch', async (req: AuthRequest, res: Response) => {
 });
 
 // Get feed statistics
-router.get('/feeds/:id/stats', async (req: AuthRequest, res: Response) => {
+router.get('/feeds/:id/stats', validateParams(feedIdParamSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const feedId = parseInt(req.params.id as string, 10);
-    if (isNaN(feedId)) {
-      return res.status(400).json({
-        error: {
-          code: 'INVALID_ID',
-          message: 'Invalid feed ID',
-        },
-      });
-    }
-
+    const feedId = req.params.id as unknown as number;
     const stats = await getFeedStats(feedId);
     res.json({ data: stats });
   } catch (err: any) {
@@ -279,18 +209,9 @@ router.get('/feeds/:id/stats', async (req: AuthRequest, res: Response) => {
 });
 
 // Get fetch logs for a feed
-router.get('/feeds/:id/logs', async (req: AuthRequest, res: Response) => {
+router.get('/feeds/:id/logs', validateParams(feedIdParamSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const feedId = parseInt(req.params.id as string, 10);
-    if (isNaN(feedId)) {
-      return res.status(400).json({
-        error: {
-          code: 'INVALID_ID',
-          message: 'Invalid feed ID',
-        },
-      });
-    }
-
+    const feedId = req.params.id as unknown as number;
     const limit = parseInt(req.query.limit as string) || 20;
     const logs = await getFetchLogs(feedId, limit);
     res.json({ data: logs });
@@ -305,29 +226,9 @@ router.get('/feeds/:id/logs', async (req: AuthRequest, res: Response) => {
 });
 
 // Test feed URL (parse without saving)
-router.post('/test', async (req: AuthRequest, res: Response) => {
+router.post('/test', validateBody(testFeedSchema), async (req: AuthRequest, res: Response) => {
   try {
     const { url } = req.body;
-
-    if (!url) {
-      return res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'URL is required',
-        },
-      });
-    }
-
-    try {
-      new URL(url);
-    } catch {
-      return res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid URL format',
-        },
-      });
-    }
 
     const articles = await parseFeed(url);
     res.json({
@@ -348,22 +249,24 @@ router.post('/test', async (req: AuthRequest, res: Response) => {
 });
 
 // Get RSS items
-router.get('/items', async (req: AuthRequest, res: Response) => {
+router.get('/items', validateQuery(rssItemsQuerySchema), async (req: AuthRequest, res: Response) => {
   try {
-    const feedId = req.query.feedId ? parseInt(req.query.feedId as string) : undefined;
-    const limit = parseInt(req.query.limit as string) || 50;
-    const offset = parseInt(req.query.offset as string) || 0;
-    const processed = req.query.processed !== undefined ? req.query.processed === 'true' : undefined;
-    const language = req.query.language as string | undefined;
-    const category = req.query.category as string | undefined;
+    const { feedId, limit, offset, processed, language, category } = req.query;
 
-    const result = await getItems({ feedId, limit, offset, processed, language, category });
+    const result = await getItems({
+      feedId: feedId as number | undefined,
+      limit: limit as number,
+      offset: offset as number,
+      processed: processed as boolean | undefined,
+      language: language as string | undefined,
+      category: category as string | undefined,
+    });
     res.json({
       data: result.items,
       meta: {
         total: result.total,
-        limit,
-        offset,
+        limit: limit as number,
+        offset: offset as number,
       },
     });
   } catch (err: any) {
@@ -377,18 +280,9 @@ router.get('/items', async (req: AuthRequest, res: Response) => {
 });
 
 // Get RSS item by ID
-router.get('/items/:id', async (req: AuthRequest, res: Response) => {
+router.get('/items/:id', validateParams(rssItemIdParamSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const itemId = parseInt(req.params.id as string, 10);
-    if (isNaN(itemId)) {
-      return res.status(400).json({
-        error: {
-          code: 'INVALID_ID',
-          message: 'Invalid item ID',
-        },
-      });
-    }
-
+    const itemId = req.params.id as unknown as number;
     const item = await getItemById(itemId);
     if (!item) {
       return res.status(404).json({
@@ -411,18 +305,9 @@ router.get('/items/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // Mark item as processed
-router.patch('/items/:id/processed', async (req: AuthRequest, res: Response) => {
+router.patch('/items/:id/processed', validateParams(rssItemIdParamSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const itemId = parseInt(req.params.id as string, 10);
-    if (isNaN(itemId)) {
-      return res.status(400).json({
-        error: {
-          code: 'INVALID_ID',
-          message: 'Invalid item ID',
-        },
-      });
-    }
-
+    const itemId = req.params.id as unknown as number;
     const updated = await markItemProcessed(itemId);
     if (!updated) {
       return res.status(404).json({
@@ -445,18 +330,9 @@ router.patch('/items/:id/processed', async (req: AuthRequest, res: Response) => 
 });
 
 // Delete RSS item
-router.delete('/items/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/items/:id', validateParams(rssItemIdParamSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const itemId = parseInt(req.params.id as string, 10);
-    if (isNaN(itemId)) {
-      return res.status(400).json({
-        error: {
-          code: 'INVALID_ID',
-          message: 'Invalid item ID',
-        },
-      });
-    }
-
+    const itemId = req.params.id as unknown as number;
     const deleted = await deleteItem(itemId);
     if (!deleted) {
       return res.status(404).json({
@@ -494,10 +370,10 @@ router.post('/poll', async (req: AuthRequest, res: Response) => {
 });
 
 // Get RSS items for trend analysis
-router.get('/trend-analysis', async (req: AuthRequest, res: Response) => {
+router.get('/trend-analysis', validateQuery(trendAnalysisQuerySchema), async (req: AuthRequest, res: Response) => {
   try {
-    const hours = parseInt(req.query.hours as string) || 24;
-    const limit = parseInt(req.query.limit as string) || 100;
+    const hours = req.query.hours as unknown as number;
+    const limit = req.query.limit as unknown as number;
     const language = req.query.language as string | undefined;
 
     let sql = `
@@ -518,7 +394,7 @@ router.get('/trend-analysis', async (req: AuthRequest, res: Response) => {
       JOIN rss_feeds rf ON ri.feed_id = rf.id
       WHERE ri.fetched_at > NOW() - INTERVAL '${hours} hours'
     `;
-    const params: any[] = [];
+    const params: unknown[] = [];
 
     if (language) {
       sql += ` AND rf.language = $1`;

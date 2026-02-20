@@ -9,6 +9,7 @@ import Publisher from './pages/Publisher';
 import TrendExplorer from './pages/TrendExplorer';
 import SEOTools from './pages/SEOTools';
 import Settings from './pages/Settings';
+import SecurityDashboard from './pages/SecurityDashboard';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -31,6 +32,7 @@ export default function App() {
                 <Route path="/publisher" element={<Publisher />} />
                 <Route path="/trends" element={<TrendExplorer />} />
                 <Route path="/seo" element={<SEOTools />} />
+                <Route path="/security" element={<SecurityDashboard />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>
             </Layout>
