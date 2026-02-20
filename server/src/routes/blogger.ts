@@ -4,6 +4,7 @@ import { query } from '../db/connection';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import { z } from 'zod';
+import { logger } from '../utils/logger';
 
 const router = Router();
 router.use(authenticate);
@@ -56,6 +57,7 @@ router.get('/auth-url', (_req: AuthRequest, res: Response) => {
       data: { authUrl: url },
     });
   } catch (err: any) {
+    logger.error('Failed to generate auth URL:', err);
     res.status(500).json({
       error: {
         code: 'OAUTH_ERROR',
@@ -104,6 +106,7 @@ router.post('/callback', validateBody(callbackSchema), async (req: AuthRequest, 
       },
     });
   } catch (err: any) {
+    logger.error('Failed to exchange code for tokens:', err);
     res.status(400).json({
       error: {
         code: 'TOKEN_EXCHANGE_ERROR',
@@ -162,6 +165,8 @@ router.get('/blogs', async (req: AuthRequest, res: Response) => {
       })),
     });
   } catch (err: any) {
+    logger.error('Failed to list blogs:', err);
+    
     // Handle token expiration
     if (err.code === 401 || err.message?.includes('invalid_token')) {
       return res.status(401).json({
@@ -255,6 +260,8 @@ router.post('/publish', validateBody(publishSchema), async (req: AuthRequest, re
       },
     });
   } catch (err: any) {
+    logger.error('Failed to publish post:', err);
+    
     // Handle token expiration
     if (err.code === 401 || err.message?.includes('invalid_token')) {
       return res.status(401).json({
