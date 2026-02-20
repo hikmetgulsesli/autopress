@@ -7,12 +7,28 @@ router.use(authenticate);
 
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
-    const { language, limit = '50' } = req.query;
+    const { language, region, limit = '50' } = req.query;
     let sql = 'SELECT * FROM trends';
     const params: any[] = [];
-    if (language) { sql += ' WHERE language = $1'; params.push(language); }
+    const conditions: string[] = [];
+    
+    if (language) {
+      params.push(language);
+      conditions.push(`language = $${params.length}`);
+    }
+    
+    if (region) {
+      params.push(region);
+      conditions.push(`region = $${params.length}`);
+    }
+    
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+    
     sql += ' ORDER BY score DESC LIMIT $' + (params.length + 1);
     params.push(Number(limit));
+    
     const result = await query(sql, params);
     res.json(result.rows);
   } catch (err: any) {
