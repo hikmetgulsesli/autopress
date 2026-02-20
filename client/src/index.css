@@ -1,18 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@import './styles/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-dark-950 text-dark-100 antialiased;
+  :root {
+    color-scheme: dark;
   }
+
+  html {
+    font-family: var(--font-body);
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-surface text-text min-h-screen;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: var(--tracking-tight);
+    text-wrap: balance;
+  }
+
+  code, pre {
+    font-family: var(--font-mono);
+  }
+
+  ::selection {
+    background-color: var(--color-primary-400);
+    color: var(--color-surface);
+  }
+
   ::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
   }
+
   ::-webkit-scrollbar-track {
-    @apply bg-dark-900;
+    background-color: var(--color-surface-alt);
   }
+
   ::-webkit-scrollbar-thumb {
-    @apply bg-dark-600 rounded-full;
+    background-color: var(--color-border);
+    border-radius: var(--radius-full);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-text-subtle);
+  }
+
+  /* Focus styles for accessibility */
+  :focus-visible {
+    outline: 2px solid var(--color-primary-400);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Button base styles */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200;
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    @apply bg-primary-400 text-surface hover:bg-primary-500;
+    background-color: var(--color-primary-400);
+    color: var(--color-surface);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-primary-500);
+  }
+
+  .btn-accent {
+    @apply bg-accent-400 text-surface hover:bg-accent-500;
+    background-color: var(--color-accent-400);
+    color: var(--color-surface);
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-text-muted hover:text-text hover:bg-surface-alt;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-surface-alt border border-border rounded-xl p-6;
+    background-color: var(--color-surface-alt);
+    border-color: var(--color-border);
+  }
+
+  /* Input styles */
+  .input {
+    @apply w-full px-4 py-2 bg-surface border border-border rounded-lg text-text placeholder:text-text-muted;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
+
+  .input:focus {
+    @apply outline-none border-primary-400;
+    border-color: var(--color-primary-400);
+    box-shadow: var(--shadow-glow-primary);
+  }
+}
+
+@layer utilities {
+  /* Text utilities using CSS variables */
+  .text-primary {
+    color: var(--color-primary-400);
+  }
+
+  .text-accent {
+    color: var(--color-accent-400);
+  }
+
+  .text-muted {
+    color: var(--color-text-muted);
+  }
+
+  /* Background utilities */
+  .bg-surface {
+    background-color: var(--color-surface);
+  }
+
+  .bg-surface-alt {
+    background-color: var(--color-surface-alt);
+  }
+
+  /* Border utilities */
+  .border-subtle {
+    border-color: var(--color-border-subtle);
+  }
+
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: var(--shadow-glow-primary);
+  }
+
+  .glow-accent {
+    box-shadow: var(--shadow-glow-accent);
+  }
+
+  /* Animation for reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
