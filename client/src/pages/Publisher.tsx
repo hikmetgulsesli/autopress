@@ -59,6 +59,18 @@ interface ScheduleData {
   scheduledAt: string;
 }
 
+interface ApiError {
+  response?: {
+    data?: {
+      error?: {
+        code?: string;
+        message?: string;
+      };
+    };
+  };
+  message?: string;
+}
+
 function ScheduleModal({ isOpen, onClose, onSchedule, articles, sites }: ScheduleModalProps) {
   const [selectedArticle, setSelectedArticle] = useState<number | ''>('');
   const [selectedSite, setSelectedSite] = useState<number | ''>('');
@@ -101,7 +113,7 @@ function ScheduleModal({ isOpen, onClose, onSchedule, articles, sites }: Schedul
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-surface rounded-lg transition-colors"
+            className="p-2 hover:bg-surface rounded-lg transition-colors cursor-pointer"
             aria-label="Kapat"
           >
             <X className="w-5 h-5 text-text-muted" />
@@ -201,14 +213,14 @@ function ScheduleModal({ isOpen, onClose, onSchedule, articles, sites }: Schedul
             <button
               type="button"
               onClick={onClose}
-              className="btn btn-ghost flex-1"
+              className="btn btn-ghost flex-1 cursor-pointer"
             >
               İptal
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !selectedArticle || !selectedSite || !date}
-              className="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isSubmitting ? 'Zamanlanıyor...' : 'Zamanla'}
             </button>
@@ -226,12 +238,14 @@ export default function Publisher() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [calendarView, setCalendarView] = useState<View>('month');
   const [calendarDate, setCalendarDate] = useState(new Date());
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const [queueRes, historyRes, articlesRes, sitesRes] = await Promise.all([
         api.get('/publish/queue'),
@@ -239,11 +253,24 @@ export default function Publisher() {
         api.get('/articles?status=draft'),
         api.get('/sites'),
       ]);
-      setQueue(queueRes.data || []);
-      setHistory(historyRes.data || []);
-      setArticles(articlesRes.data?.data || []);
-      setSites(sitesRes.data || []);
-    } catch (err) {
+
+      // Handle new API response format: { data: [...] }
+      const queueData = queueRes.data?.data ?? queueRes.data ?? [];
+      const historyData = historyRes.data?.data ?? historyRes.data ?? [];
+      const articlesData = articlesRes.data?.data ?? articlesRes.data ?? [];
+      const sitesData = sitesRes.data?.data ?? sitesRes.data ?? [];
+
+      setQueue(Array.isArray(queueData) ? queueData : []);
+      setHistory(Array.isArray(historyData) ? historyData : []);
+      setArticles(Array.isArray(articlesData) ? articlesData : []);
+      setSites(Array.isArray(sitesData) ? sitesData : []);
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      const errorMessage = apiError.response?.data?.error?.message
+        || apiError.message
+        || 'Veriler yüklenirken bir hata oluştu';
+      setError(errorMessage);
+      notify.error(errorMessage);
       console.error('Failed to fetch publisher data:', err);
     } finally {
       setIsLoading(false);
@@ -259,9 +286,12 @@ export default function Publisher() {
       await api.post('/publish/schedule', data);
       notify.success('Makale başarıyla zamanlandı');
       fetchData();
-    } catch (err) {
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      const errorMessage = apiError.response?.data?.error?.message
+        || 'Makale zamanlanırken bir hata oluştu';
+      notify.error(errorMessage);
       console.error('Failed to schedule article:', err);
-      notify.error('Makale zamanlanırken bir hata oluştu');
     }
   };
 
@@ -271,9 +301,12 @@ export default function Publisher() {
       await api.delete(`/publish/schedule/${articleId}`);
       notify.success('Zamanlama iptal edildi');
       fetchData();
-    } catch (err) {
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      const errorMessage = apiError.response?.data?.error?.message
+        || 'Zamanlama iptal edilirken bir hata oluştu';
+      notify.error(errorMessage);
       console.error('Failed to cancel schedule:', err);
-      notify.error('Zamanlama iptal edilirken bir hata oluştu');
     }
   };
 
@@ -282,9 +315,12 @@ export default function Publisher() {
       await api.patch(`/publish/schedule/${articleId}`, { scheduledAt: newDate });
       notify.success('Yeniden zamanlama başarılı');
       fetchData();
-    } catch (err) {
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      const errorMessage = apiError.response?.data?.error?.message
+        || 'Yeniden zamanlama yapılırken bir hata oluştu';
+      notify.error(errorMessage);
       console.error('Failed to reschedule:', err);
-      notify.error('Yeniden zamanlama yapılırken bir hata oluştu');
     }
   };
 
@@ -331,18 +367,35 @@ export default function Publisher() {
         </div>
         <button
           onClick={() => setIsScheduleModalOpen(true)}
-          className="btn btn-primary"
+          className="btn btn-primary cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           Zamanla
         </button>
       </div>
 
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm text-rose-400">{error}</p>
+          </div>
+          <button
+            onClick={fetchData}
+            className="p-2 hover:bg-rose-500/20 rounded-lg transition-colors cursor-pointer"
+            aria-label="Tekrar dene"
+          >
+            <RefreshCw className="w-4 h-4 text-rose-400" />
+          </button>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex gap-1 bg-surface-alt border border-border rounded-lg p-1 w-fit">
         <button
           onClick={() => setActiveTab('queue')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
             activeTab === 'queue'
               ? 'bg-primary-400 text-white'
               : 'text-text-muted hover:text-text'
@@ -353,7 +406,7 @@ export default function Publisher() {
         </button>
         <button
           onClick={() => setActiveTab('calendar')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
             activeTab === 'calendar'
               ? 'bg-primary-400 text-white'
               : 'text-text-muted hover:text-text'
@@ -364,7 +417,7 @@ export default function Publisher() {
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
             activeTab === 'history'
               ? 'bg-primary-400 text-white'
               : 'text-text-muted hover:text-text'
@@ -390,13 +443,25 @@ export default function Publisher() {
               <RefreshCw className="w-8 h-8 text-text-muted animate-spin mx-auto mb-4" />
               <p className="text-text-muted">Yükleniyor...</p>
             </div>
+          ) : error ? (
+            <div className="p-12 text-center">
+              <AlertCircle className="w-12 h-12 text-rose-400 mx-auto mb-4" />
+              <p className="text-text-muted">{error}</p>
+              <button
+                onClick={fetchData}
+                className="btn btn-primary mt-4 cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Tekrar Dene
+              </button>
+            </div>
           ) : queue.length === 0 ? (
             <div className="p-12 text-center">
               <Send className="w-12 h-12 text-text-muted mx-auto mb-4" />
               <p className="text-text-muted">Henüz zamanlanmış yayın yok</p>
               <button
                 onClick={() => setIsScheduleModalOpen(true)}
-                className="btn btn-primary mt-4"
+                className="btn btn-primary mt-4 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 İlk Yayını Zamanla
@@ -412,7 +477,7 @@ export default function Publisher() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-text truncate">
-                        {item.title}
+                        {item.title || 'Başlıksız Makale'}
                       </h3>
                       <div className="flex items-center gap-4 mt-2 text-sm text-text-muted">
                         <span className="flex items-center gap-1">
@@ -421,7 +486,9 @@ export default function Publisher() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {format(new Date(item.scheduled_at), 'dd MMM yyyy HH:mm', { locale: tr })}
+                          {item.scheduled_at
+                            ? format(new Date(item.scheduled_at), 'dd MMM yyyy HH:mm', { locale: tr })
+                            : 'Tarih atanmamış'}
                         </span>
                         <span
                           className={`px-2 py-0.5 rounded-full text-xs ${
@@ -437,7 +504,7 @@ export default function Publisher() {
                     <div className="flex items-center gap-2 ml-4">
                       <button
                         onClick={() => handleCancelSchedule(item.id)}
-                        className="p-2 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg transition-colors"
+                        className="p-2 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg transition-colors cursor-pointer"
                         aria-label="İptal et"
                         title="İptal et"
                       >
@@ -462,7 +529,7 @@ export default function Publisher() {
                 onClick={() =>
                   setCalendarDate(new Date(calendarDate.setMonth(calendarDate.getMonth() - 1)))
                 }
-                className="p-2 hover:bg-surface rounded-lg transition-colors"
+                className="p-2 hover:bg-surface rounded-lg transition-colors cursor-pointer"
                 aria-label="Önceki ay"
               >
                 <ChevronLeft className="w-5 h-5 text-text-muted" />
@@ -474,7 +541,7 @@ export default function Publisher() {
                 onClick={() =>
                   setCalendarDate(new Date(calendarDate.setMonth(calendarDate.getMonth() + 1)))
                 }
-                className="p-2 hover:bg-surface rounded-lg transition-colors"
+                className="p-2 hover:bg-surface rounded-lg transition-colors cursor-pointer"
                 aria-label="Sonraki ay"
               >
                 <ChevronRight className="w-5 h-5 text-text-muted" />
@@ -482,46 +549,60 @@ export default function Publisher() {
             </div>
           </div>
 
-          <div className="h-[600px]">
-            <Calendar
-              localizer={localizer}
-              events={calendarEvents}
-              startAccessor="start"
-              endAccessor="end"
-              view={calendarView}
-              onView={setCalendarView}
-              date={calendarDate}
-              onNavigate={setCalendarDate}
-              culture="tr"
-              messages={{
-                today: 'Bugün',
-                previous: 'Önceki',
-                next: 'Sonraki',
-                month: 'Ay',
-                week: 'Hafta',
-                day: 'Gün',
-                agenda: 'Ajanda',
-                date: 'Tarih',
-                time: 'Saat',
-                event: 'Etkinlik',
-                noEventsInRange: 'Bu aralıkta yayın yok',
-              }}
-              eventPropGetter={(event) => ({
-                style: {
-                  backgroundColor: event.resource.platform === 'wordpress' ? '#3b82f6' : '#f97316',
-                  borderRadius: '4px',
-                  border: 'none',
-                },
-              })}
-              components={{
-                event: ({ event }) => (
-                  <div className="text-xs truncate">
-                    {event.title}
-                  </div>
-                ),
-              }}
-            />
-          </div>
+          {error ? (
+            <div className="p-12 text-center">
+              <AlertCircle className="w-12 h-12 text-rose-400 mx-auto mb-4" />
+              <p className="text-text-muted">{error}</p>
+              <button
+                onClick={fetchData}
+                className="btn btn-primary mt-4 cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Tekrar Dene
+              </button>
+            </div>
+          ) : (
+            <div className="h-[600px]">
+              <Calendar
+                localizer={localizer}
+                events={calendarEvents}
+                startAccessor="start"
+                endAccessor="end"
+                view={calendarView}
+                onView={setCalendarView}
+                date={calendarDate}
+                onNavigate={setCalendarDate}
+                culture="tr"
+                messages={{
+                  today: 'Bugün',
+                  previous: 'Önceki',
+                  next: 'Sonraki',
+                  month: 'Ay',
+                  week: 'Hafta',
+                  day: 'Gün',
+                  agenda: 'Ajanda',
+                  date: 'Tarih',
+                  time: 'Saat',
+                  event: 'Etkinlik',
+                  noEventsInRange: 'Bu aralıkta yayın yok',
+                }}
+                eventPropGetter={(event) => ({
+                  style: {
+                    backgroundColor: event.resource.platform === 'wordpress' ? '#3b82f6' : '#f97316',
+                    borderRadius: '4px',
+                    border: 'none',
+                  },
+                })}
+                components={{
+                  event: ({ event }) => (
+                    <div className="text-xs truncate">
+                      {event.title}
+                    </div>
+                  ),
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -539,6 +620,18 @@ export default function Publisher() {
             <div className="p-12 text-center">
               <RefreshCw className="w-8 h-8 text-text-muted animate-spin mx-auto mb-4" />
               <p className="text-text-muted">Yükleniyor...</p>
+            </div>
+          ) : error ? (
+            <div className="p-12 text-center">
+              <AlertCircle className="w-12 h-12 text-rose-400 mx-auto mb-4" />
+              <p className="text-text-muted">{error}</p>
+              <button
+                onClick={fetchData}
+                className="btn btn-primary mt-4 cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Tekrar Dene
+              </button>
             </div>
           ) : history.length === 0 ? (
             <div className="p-12 text-center">
@@ -606,7 +699,9 @@ export default function Publisher() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm text-text-muted">
-                          {format(new Date(item.published_at), 'dd MMM yyyy HH:mm', { locale: tr })}
+                          {item.published_at
+                            ? format(new Date(item.published_at), 'dd MMM yyyy HH:mm', { locale: tr })
+                            : '-'}
                         </span>
                       </td>
                     </tr>

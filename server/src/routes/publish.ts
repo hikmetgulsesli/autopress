@@ -29,9 +29,16 @@ router.get('/queue', async (_req: AuthRequest, res: Response) => {
        WHERE a.status = 'scheduled' 
        ORDER BY a.published_at ASC`
     );
-    res.json(result.rows);
+    res.json({ data: result.rows || [] });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('Error fetching publish queue:', err);
+    res.status(500).json({
+      error: {
+        code: 'DATABASE_ERROR',
+        message: 'Yayın kuyruğu alınırken bir hata oluştu',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      }
+    });
   }
 });
 
@@ -52,9 +59,16 @@ router.get('/history', async (_req: AuthRequest, res: Response) => {
        ORDER BY ph.published_at DESC 
        LIMIT 50`
     );
-    res.json(result.rows);
+    res.json({ data: result.rows || [] });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('Error fetching publish history:', err);
+    res.status(500).json({
+      error: {
+        code: 'DATABASE_ERROR',
+        message: 'Yayın geçmişi alınırken bir hata oluştu',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      }
+    });
   }
 });
 
@@ -67,9 +81,16 @@ router.get('/schedules', async (_req: AuthRequest, res: Response) => {
        JOIN sites s ON sc.site_id = s.id 
        ORDER BY sc.day_of_week, sc.publish_time`
     );
-    res.json(result.rows);
+    res.json({ data: result.rows || [] });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('Error fetching schedules:', err);
+    res.status(500).json({
+      error: {
+        code: 'DATABASE_ERROR',
+        message: 'Zamanlama bilgileri alınırken bir hata oluştu',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      }
+    });
   }
 });
 
@@ -97,12 +118,19 @@ router.post('/schedule', validateBody(scheduleArticleSchema), async (req: AuthRe
       [articleId, siteId, platform, scheduledAt]
     );
 
-    res.status(201).json({ 
+    res.status(201).json({
       success: true,
       message: 'Makale başarıyla zamanlandı'
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('Error scheduling article:', err);
+    res.status(500).json({
+      error: {
+        code: 'SCHEDULE_ERROR',
+        message: 'Makale zamanlanırken bir hata oluştu',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      }
+    });
   }
 });
 
@@ -129,12 +157,19 @@ router.delete('/schedule/:articleId', validateParams(articleIdParamSchema), asyn
       [articleId]
     );
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Zamanlama iptal edildi'
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('Error cancelling schedule:', err);
+    res.status(500).json({
+      error: {
+        code: 'CANCEL_ERROR',
+        message: 'Zamanlama iptal edilirken bir hata oluştu',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      }
+    });
   }
 });
 
@@ -161,12 +196,19 @@ router.patch('/schedule/:articleId', validateParams(articleIdParamSchema), valid
       [scheduledAt, articleId]
     );
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Zamanlama güncellendi'
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('Error rescheduling article:', err);
+    res.status(500).json({
+      error: {
+        code: 'RESCHEDULE_ERROR',
+        message: 'Zamanlama güncellenirken bir hata oluştu',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      }
+    });
   }
 });
 
@@ -194,7 +236,7 @@ router.post('/publish-now', validateBody(publishNowSchema), async (req: AuthRequ
     );
 
     if (articleResult.rows.length === 0) {
-      res.status(404).json({ 
+      res.status(404).json({
         error: {
           code: 'NOT_FOUND',
           message: 'Makale bulunamadı'
@@ -336,7 +378,7 @@ router.post('/publish-now', validateBody(publishNowSchema), async (req: AuthRequ
 
       logger.info(`Article ${articleId} published successfully to ${platform}: ${publishResult.publishedUrl}`);
 
-      res.json({ 
+      res.json({
         success: true,
         message: 'Makale başarıyla yayınlandı',
         data: {
@@ -350,7 +392,7 @@ router.post('/publish-now', validateBody(publishNowSchema), async (req: AuthRequ
     } catch (publishError: any) {
       // Log failed publish to history
       const errorMessage = publishError.message || 'Yayınlama hatası';
-      
+
       await query(
         `INSERT INTO publish_history 
          (article_id, site_id, platform, platform_post_id, status, error_message, published_at)
@@ -373,7 +415,7 @@ router.post('/publish-now', validateBody(publishNowSchema), async (req: AuthRequ
     }
   } catch (err: any) {
     logger.error('Unexpected error in publish-now:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       error: {
         code: 'INTERNAL_ERROR',
         message: err.message || 'Beklenmeyen bir hata oluştu'
