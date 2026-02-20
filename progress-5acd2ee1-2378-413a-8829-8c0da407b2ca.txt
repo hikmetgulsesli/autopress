@@ -1,0 +1,8 @@
+
+
+---
+US-001: Design System & CSS Custom Properties - COMPLETED
+- Branch: US-001
+- PR: https://github.com/hikmetgulsesli/autopress/pull/1
+- Implemented: Design tokens with CSS custom properties
+- Completed: Fri Feb 20 11:48:19 +03 2026
