@@ -1,8 +1,23 @@
 
-
 ---
 US-001: Design System & CSS Custom Properties - COMPLETED
 - Branch: US-001
 - PR: https://github.com/hikmetgulsesli/autopress/pull/1
 - Implemented: Design tokens with CSS custom properties
 - Completed: Fri Feb 20 11:48:19 +03 2026
+
+
+---
+US-003: TipTap WYSIWYG Editor Integration - COMPLETED
+- Branch: US-003
+- PR: https://github.com/hikmetgulsesli/autopress/pull/3
+- Implemented: TipTap WYSIWYG editor
+- Completed: Fri Feb 20 12:22:04 +03 2026
+
+
+---
+US-004: SEO Preview Panel & Article Form - COMPLETED
+- Branch: US-004
+- PR: https://github.com/hikmetgulsesli/autopress/pull/4
+- Implemented: ContentStudio page with article form, SEO preview panel, AI content generation
+- Completed: Fri Feb 20 12:31:00 +03 2026
