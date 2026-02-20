@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { publishPost, updatePost, deletePost, publishPage, uploadMedia, getCategories, getTags } from '../services/wordpress.service';
+import { publishPost, updatePost, deletePost, publishPage, uploadMedia, getCategories, getTags, testConnection } from '../services/wordpress.service';
 
 describe('WordPressService', () => {
   beforeEach(() => {
@@ -106,6 +106,42 @@ describe('WordPressService', () => {
       await expect(
         publishPost(1, { title: 'Test', content: 'Content', status: 'private' })
       ).rejects.toMatchObject({ code: 'API_ERROR' });
+    });
+  });
+
+  describe('testConnection', () => {
+    it('should return failure for missing config', async () => {
+      const result = await testConnection({
+        siteUrl: '',
+        username: '',
+        applicationPassword: '',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('WordPress site URL is required');
+    });
+
+    it('should return failure for missing credentials', async () => {
+      const result = await testConnection({
+        siteUrl: 'https://example.com',
+        username: '',
+        applicationPassword: '',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('username and application password are required');
+    });
+
+    it('should return failure when API call fails', async () => {
+      const result = await testConnection({
+        siteUrl: 'https://invalid-wordpress-site.com',
+        username: 'testuser',
+        applicationPassword: 'testpass',
+      });
+
+      // Should fail because the API call will fail
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
     });
   });
 });

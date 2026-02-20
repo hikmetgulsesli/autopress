@@ -254,19 +254,19 @@ router.get('/items', validateQuery(rssItemsQuerySchema), async (req: AuthRequest
     const { feedId, limit, offset, processed, language, category } = req.query;
 
     const result = await getItems({
-      feedId: feedId as number | undefined,
-      limit: limit as number,
-      offset: offset as number,
-      processed: processed as boolean | undefined,
-      language: language as string | undefined,
-      category: category as string | undefined,
+      feedId: (feedId ? Number(feedId) : undefined),
+      limit: Number(limit),
+      offset: Number(offset),
+      processed: (processed !== undefined ? processed === 'true' : undefined),
+      language: (language ? String(language) : undefined),
+      category: (category ? String(category) : undefined),
     });
     res.json({
       data: result.items,
       meta: {
         total: result.total,
-        limit: limit as number,
-        offset: offset as number,
+        limit: Number(limit),
+        offset: Number(offset),
       },
     });
   } catch (err: any) {
@@ -374,7 +374,7 @@ router.get('/trend-analysis', validateQuery(trendAnalysisQuerySchema), async (re
   try {
     const hours = req.query.hours as unknown as number;
     const limit = req.query.limit as unknown as number;
-    const language = req.query.language as string | undefined;
+    const language = req.query.language ? String(req.query.language) : undefined;
 
     let sql = `
       SELECT 

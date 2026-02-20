@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
 import { query } from '../db/connection';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { testConnection as testWordPressConnection, WordPressConfig } from '../services/wordpress.service';
+import { testConnection as testBloggerConnection, BloggerTokens } from '../services/blogger.service';
 
 const router = Router();
 router.use(authenticate);
@@ -72,6 +74,52 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
     res.json({ message: 'Site silindi' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Test connection to site
+router.post('/:id/test-connection', async (req: AuthRequest, res: Response) => {
+  try {
+    const siteId = req.params.id;
+    
+    // Get site from database
+    const siteResult = await query('SELECT * FROM sites WHERE id = $1', [siteId]);
+    if (!siteResult.rows[0]) {
+      return res.status(404).json({ error: 'Site bulunamadı' });
+    }
+    
+    const site = siteResult.rows[0];
+    const credentials = site.api_credentials || {};
+    
+    let result: { success: boolean; message: string };
+    
+    if (site.platform === 'wordpress') {
+      const config: WordPressConfig = {
+        siteUrl: credentials.siteUrl || site.domain,
+        username: credentials.username,
+        applicationPassword: credentials.applicationPassword,
+      };
+      result = await testWordPressConnection(config);
+    } else if (site.platform === 'blogger') {
+      const tokens: BloggerTokens = {
+        accessToken: credentials.accessToken,
+        refreshToken: credentials.refreshToken,
+        expiryDate: credentials.expiryDate,
+      };
+      result = await testBloggerConnection(tokens);
+    } else {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Unsupported platform: ${site.platform}` 
+      });
+    }
+    
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ 
+      success: false, 
+      message: err.message || 'Connection test failed' 
+    });
   }
 });
 
