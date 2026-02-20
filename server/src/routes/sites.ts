@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { query } from '../db/connection';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import axios from 'axios';
 
 const router = Router();
 router.use(authenticate);
