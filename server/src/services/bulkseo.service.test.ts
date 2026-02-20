@@ -16,6 +16,7 @@ import {
   getLinkSuggestions,
   applyLinkSuggestion,
   deleteOldJobs,
+  updateArticleSEOScore,
 } from './bulkseo.service';
 import { query } from '../db/connection';
 
@@ -32,7 +33,7 @@ describe('BulkSEOService', () => {
   });
 
   describe('analyzeArticleSEO', () => {
-    it('should detect missing meta description', () => {
+    it('should detect missing meta description', async () => {
       const article = {
         id: 1,
         title: 'Test Article Title',
@@ -44,7 +45,8 @@ describe('BulkSEOService', () => {
         word_count: 500,
       };
 
-      const result = analyzeArticleSEO(article);
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({
@@ -55,7 +57,7 @@ describe('BulkSEOService', () => {
       );
     });
 
-    it('should detect short title', () => {
+    it('should detect short title', async () => {
       const article = {
         id: 1,
         title: 'Short',
@@ -67,7 +69,8 @@ describe('BulkSEOService', () => {
         word_count: 500,
       };
 
-      const result = analyzeArticleSEO(article);
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({
@@ -78,7 +81,7 @@ describe('BulkSEOService', () => {
       );
     });
 
-    it('should detect missing H1 heading', () => {
+    it('should detect missing H1 heading', async () => {
       const article = {
         id: 1,
         title: 'Test Article Title That Is Long Enough',
@@ -90,7 +93,8 @@ describe('BulkSEOService', () => {
         word_count: 500,
       };
 
-      const result = analyzeArticleSEO(article);
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({
@@ -101,7 +105,7 @@ describe('BulkSEOService', () => {
       );
     });
 
-    it('should detect short content', () => {
+    it('should detect short content', async () => {
       const article = {
         id: 1,
         title: 'Test Article Title That Is Long Enough',
@@ -113,7 +117,8 @@ describe('BulkSEOService', () => {
         word_count: 100,
       };
 
-      const result = analyzeArticleSEO(article);
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({
@@ -124,7 +129,7 @@ describe('BulkSEOService', () => {
       );
     });
 
-    it('should pass for well-optimized article', () => {
+    it('should pass for well-optimized article', async () => {
       const article = {
         id: 1,
         title: 'Complete Guide to SEO Best Practices',
@@ -136,9 +141,55 @@ describe('BulkSEOService', () => {
         word_count: 1000,
       };
 
-      const result = analyzeArticleSEO(article);
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues.filter(i => i.type === 'error')).toHaveLength(0);
+    });
+
+    it('should save SEO score to database after analysis', async () => {
+      const article = {
+        id: 1,
+        title: 'Complete Guide to SEO Best Practices',
+        slug: 'seo-best-practices',
+        content: '<h1>Complete Guide to SEO</h1><h2>Introduction</h2><p>' + 'word '.repeat(400) + '</p>',
+        meta_title: 'Complete Guide to SEO Best Practices',
+        meta_description: 'Learn the best SEO practices for 2024. This comprehensive guide covers everything you need to know.',
+        seo_score: 85,
+        word_count: 1000,
+      };
+
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+      const result = await analyzeArticleSEO(article);
+
+      expect(mockedQuery).toHaveBeenCalledWith(
+        'UPDATE articles SET seo_score = $1 WHERE id = $2',
+        [expect.any(Number), 1]
+      );
+      expect(result.seo_score).toBeGreaterThan(0);
+    });
+
+    it('should calculate lower SEO score for articles with errors', async () => {
+      const article = {
+        id: 1,
+        title: 'Short',
+        slug: '',
+        content: '<p>No headings</p>',
+        meta_title: 'Short',
+        meta_description: '',
+        seo_score: 50,
+        word_count: 100,
+      };
+
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+      const result = await analyzeArticleSEO(article);
+
+      // Multiple errors should result in lower score
+      expect(result.seo_score).toBeLessThan(50);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        'UPDATE articles SET seo_score = $1 WHERE id = $2',
+        [expect.any(Number), 1]
+      );
     });
   });
 
@@ -393,13 +444,38 @@ describe('BulkSEOService', () => {
     });
   });
 
-  describe('deleteOldJobs', () => {
-    it('should delete old completed jobs', async () => {
-      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 1 }, { id: 2 }], rowCount: 2 } as any);
+  describe('updateArticleSEOScore', () => {
+    it('should update article SEO score with parameterized query', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
 
-      const result = await deleteOldJobs(30);
+      await updateArticleSEOScore(1, 85);
 
-      expect(result).toBe(2);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        'UPDATE articles SET seo_score = $1 WHERE id = $2',
+        [85, 1]
+      );
+    });
+
+    it('should handle zero SEO score', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+
+      await updateArticleSEOScore(1, 0);
+
+      expect(mockedQuery).toHaveBeenCalledWith(
+        'UPDATE articles SET seo_score = $1 WHERE id = $2',
+        [0, 1]
+      );
+    });
+
+    it('should handle maximum SEO score', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+
+      await updateArticleSEOScore(1, 100);
+
+      expect(mockedQuery).toHaveBeenCalledWith(
+        'UPDATE articles SET seo_score = $1 WHERE id = $2',
+        [100, 1]
+      );
     });
   });
 });
