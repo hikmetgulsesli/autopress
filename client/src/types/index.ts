@@ -43,3 +43,12 @@ export interface Keyword {
   trend_score: number;
   last_checked: string;
 }
+
+export interface Setting {
+  id: number;
+  key: string;
+  value: string;
+  type: 'string' | 'number' | 'boolean' | 'json';
+}
+
+export type SettingsMap = Record<string, string | number | boolean>;
