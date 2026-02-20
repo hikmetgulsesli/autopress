@@ -16,6 +16,13 @@ export interface Site {
   updated_at: string;
 }
 
+export interface ConnectionTestResult {
+  success: boolean;
+  message: string;
+  platform: string;
+  tested_at: string;
+}
+
 interface SiteState {
   sites: Site[];
   isLoading: boolean;
@@ -23,6 +30,7 @@ interface SiteState {
   createSite: (data: Partial<Site>) => Promise<void>;
   updateSite: (id: number, data: Partial<Site>) => Promise<void>;
   deleteSite: (id: number) => Promise<void>;
+  testConnection: (id: number) => Promise<ConnectionTestResult>;
 }
 
 export const useSiteStore = create<SiteState>((set, get) => ({
@@ -52,5 +60,10 @@ export const useSiteStore = create<SiteState>((set, get) => ({
   deleteSite: async (id) => {
     await api.delete(`/sites/${id}`);
     set({ sites: get().sites.filter((s) => s.id !== id) });
+  },
+
+  testConnection: async (id) => {
+    const { data } = await api.post(`/sites/${id}/test-connection`);
+    return data.data as ConnectionTestResult;
   },
 }));
