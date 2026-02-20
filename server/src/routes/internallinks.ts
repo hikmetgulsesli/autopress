@@ -17,7 +17,7 @@ router.use(authenticate);
 // Get link suggestions for an article
 router.get('/suggestions/:articleId', async (req: AuthRequest, res: Response) => {
   try {
-    const articleId = parseInt(req.params.articleId);
+    const articleId = parseInt(req.params.articleId as string);
     const maxSuggestions = parseInt(req.query.max as string) || 10;
 
     if (isNaN(articleId)) {
@@ -103,7 +103,7 @@ router.post('/apply', async (req: AuthRequest, res: Response) => {
 // Auto-link an article with high-quality suggestions
 router.post('/auto-link/:articleId', async (req: AuthRequest, res: Response) => {
   try {
-    const articleId = parseInt(req.params.articleId);
+    const articleId = parseInt(req.params.articleId as string);
     const maxLinks = parseInt(req.body.maxLinks) || 5;
 
     if (isNaN(articleId)) {
@@ -137,7 +137,7 @@ router.post('/auto-link/:articleId', async (req: AuthRequest, res: Response) => 
 // Get internal links for an article
 router.get('/article/:articleId', async (req: AuthRequest, res: Response) => {
   try {
-    const articleId = parseInt(req.params.articleId);
+    const articleId = parseInt(req.params.articleId as string);
 
     if (isNaN(articleId)) {
       return res.status(400).json({
@@ -170,8 +170,8 @@ router.get('/article/:articleId', async (req: AuthRequest, res: Response) => {
 // Remove an internal link
 router.delete('/:sourceId/:targetId', async (req: AuthRequest, res: Response) => {
   try {
-    const sourceId = parseInt(req.params.sourceId);
-    const targetId = parseInt(req.params.targetId);
+    const sourceId = parseInt(req.params.sourceId as string);
+    const targetId = parseInt(req.params.targetId as string);
 
     if (isNaN(sourceId) || isNaN(targetId)) {
       return res.status(400).json({
