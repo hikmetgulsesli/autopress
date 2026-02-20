@@ -14,8 +14,10 @@ vi.mock('../services/api', () => ({
   },
 }));
 
-// Mock the auth store
-vi.mock('../store/authStore', () => ({
+// Mock the site store - need to mock the actual implementation
+const mockTestConnection = vi.fn();
+
+vi.mock('../store/siteStore', () => ({
   useSiteStore: vi.fn((selector) => {
     const state = {
       sites: [
@@ -23,7 +25,7 @@ vi.mock('../store/authStore', () => ({
           id: 1,
           name: 'Test Blog',
           domain: 'testblog.com',
-          platform: 'blogger',
+          platform: 'blogger' as const,
           platform_id: '123456',
           api_credentials: { api_key: 'test-key' },
           language: 'tr',
@@ -39,9 +41,9 @@ vi.mock('../store/authStore', () => ({
       createSite: vi.fn(),
       updateSite: vi.fn(),
       deleteSite: vi.fn(),
-      testConnection: vi.fn(),
+      testConnection: mockTestConnection,
     };
-    return selector(state);
+    return selector ? selector(state) : state;
   }),
 }));
 
@@ -57,19 +59,26 @@ describe('SiteManager - Test Connection Button', () => {
     vi.clearAllMocks();
   });
 
-  it('renders test connection button for each site', () => {
+  it('renders test connection button for each site', async () => {
     render(
       <MemoryRouter>
         <SiteManager />
       </MemoryRouter>
     );
 
-    const testButtons = screen.getAllByRole('button', { name: /Bağlantıyı Test Et/i });
-    expect(testButtons.length).toBeGreaterThan(0);
+    // Wait for the component to render sites
+    await waitFor(() => {
+      expect(screen.getByText('Test Blog')).toBeInTheDocument();
+    });
+
+    // Find test connection button by text content
+    const testButton = screen.getByText('Bağlantıyı Test Et');
+    expect(testButton).toBeInTheDocument();
   });
 
   it('shows loading spinner during connection test', async () => {
-    mockApi.post.mockImplementation(() => new Promise(() => {})); // Never resolves
+    // Make testConnection never resolve to simulate loading
+    mockTestConnection.mockImplementation(() => new Promise(() => {}));
 
     render(
       <MemoryRouter>
@@ -77,24 +86,24 @@ describe('SiteManager - Test Connection Button', () => {
       </MemoryRouter>
     );
 
-    const testButton = screen.getByRole('button', { name: /Bağlantıyı Test Et/i });
+    await waitFor(() => {
+      expect(screen.getByText('Test Blog')).toBeInTheDocument();
+    });
+
+    const testButton = screen.getByText('Bağlantıyı Test Et');
     fireEvent.click(testButton);
 
     await waitFor(() => {
-      expect(testButton).toBeDisabled();
+      expect(testButton.closest('button')).toBeDisabled();
     });
   });
 
   it('displays success message on valid credentials', async () => {
-    mockApi.post.mockResolvedValueOnce({
-      data: {
-        data: {
-          success: true,
-          message: 'Bağlantı başarılı! Site erişimi doğrulandı.',
-          platform: 'blogger',
-          tested_at: new Date().toISOString(),
-        },
-      },
+    mockTestConnection.mockResolvedValueOnce({
+      success: true,
+      message: 'Bağlantı başarılı! Site erişimi doğrulandı.',
+      platform: 'blogger',
+      tested_at: new Date().toISOString(),
     });
 
     render(
@@ -103,7 +112,11 @@ describe('SiteManager - Test Connection Button', () => {
       </MemoryRouter>
     );
 
-    const testButton = screen.getByRole('button', { name: /Bağlantıyı Test Et/i });
+    await waitFor(() => {
+      expect(screen.getByText('Test Blog')).toBeInTheDocument();
+    });
+
+    const testButton = screen.getByText('Bağlantıyı Test Et');
     fireEvent.click(testButton);
 
     await waitFor(() => {
@@ -112,7 +125,7 @@ describe('SiteManager - Test Connection Button', () => {
   });
 
   it('displays error message on invalid credentials', async () => {
-    mockApi.post.mockRejectedValueOnce({
+    mockTestConnection.mockRejectedValueOnce({
       response: {
         data: {
           error: {
@@ -129,7 +142,11 @@ describe('SiteManager - Test Connection Button', () => {
       </MemoryRouter>
     );
 
-    const testButton = screen.getByRole('button', { name: /Bağlantıyı Test Et/i });
+    await waitFor(() => {
+      expect(screen.getByText('Test Blog')).toBeInTheDocument();
+    });
+
+    const testButton = screen.getByText('Bağlantıyı Test Et');
     fireEvent.click(testButton);
 
     await waitFor(() => {
@@ -138,7 +155,7 @@ describe('SiteManager - Test Connection Button', () => {
   });
 
   it('displays error message when platform ID is missing', async () => {
-    mockApi.post.mockRejectedValueOnce({
+    mockTestConnection.mockRejectedValueOnce({
       response: {
         data: {
           error: {
@@ -155,7 +172,11 @@ describe('SiteManager - Test Connection Button', () => {
       </MemoryRouter>
     );
 
-    const testButton = screen.getByRole('button', { name: /Bağlantıyı Test Et/i });
+    await waitFor(() => {
+      expect(screen.getByText('Test Blog')).toBeInTheDocument();
+    });
+
+    const testButton = screen.getByText('Bağlantıyı Test Et');
     fireEvent.click(testButton);
 
     await waitFor(() => {
@@ -164,7 +185,7 @@ describe('SiteManager - Test Connection Button', () => {
   });
 
   it('displays error message when API credentials are missing', async () => {
-    mockApi.post.mockRejectedValueOnce({
+    mockTestConnection.mockRejectedValueOnce({
       response: {
         data: {
           error: {
@@ -181,7 +202,11 @@ describe('SiteManager - Test Connection Button', () => {
       </MemoryRouter>
     );
 
-    const testButton = screen.getByRole('button', { name: /Bağlantıyı Test Et/i });
+    await waitFor(() => {
+      expect(screen.getByText('Test Blog')).toBeInTheDocument();
+    });
+
+    const testButton = screen.getByText('Bağlantıyı Test Et');
     fireEvent.click(testButton);
 
     await waitFor(() => {
@@ -189,14 +214,18 @@ describe('SiteManager - Test Connection Button', () => {
     });
   });
 
-  it('button has proper accessibility attributes', () => {
+  it('button has proper accessibility attributes', async () => {
     render(
       <MemoryRouter>
         <SiteManager />
       </MemoryRouter>
     );
 
-    const testButton = screen.getByRole('button', { name: /Bağlantıyı Test Et/i });
-    expect(testButton).toHaveAttribute('aria-label');
+    await waitFor(() => {
+      expect(screen.getByText('Test Blog')).toBeInTheDocument();
+    });
+
+    const testButton = screen.getByText('Bağlantıyı Test Et');
+    expect(testButton.closest('button')).toHaveAttribute('aria-label');
   });
 });
