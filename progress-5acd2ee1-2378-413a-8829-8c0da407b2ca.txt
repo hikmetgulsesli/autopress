@@ -1,6 +1,13 @@
 
 
 ---
+US-003: TipTap WYSIWYG Editor Integration - COMPLETED
+- Branch: US-003
+- PR: https://github.com/hikmetgulsesli/autopress/pull/8
+- Implemented: TipTap editor with toolbar (headings, bold, italic, lists, links), integrated into ContentStudio
+- Completed: Fri Feb 20 13:30:00 +03 2026
+
+---
 US-001: Design System & CSS Custom Properties - COMPLETED
 - Branch: US-001
 - PR: https://github.com/hikmetgulsesli/autopress/pull/1
