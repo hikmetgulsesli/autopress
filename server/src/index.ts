@@ -12,6 +12,8 @@ import publishRoutes from './routes/publish';
 import seoRoutes from './routes/seo';
 import settingsRoutes from './routes/settings';
 import searchConsoleRoutes from './routes/searchconsole';
+import schedulerRoutes from './routes/scheduler';
+import { startScheduler, getSchedulerStatus } from './services/scheduler.service';
 
 dotenv.config();
 
@@ -31,16 +33,26 @@ app.use('/api/publish', publishRoutes);
 app.use('/api/seo', seoRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/search-console', searchConsoleRoutes);
+app.use('/api/scheduler', schedulerRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(), 
+    version: '1.0.0',
+    scheduler: getSchedulerStatus(),
+  });
 });
 
 app.use(errorHandler);
 
 app.listen(PORT, () => {
   logger.info(`AutoPress API running on port ${PORT}`);
+  
+  // Start the scheduler cron job
+  startScheduler();
+  logger.info('Scheduler started');
 });
 
 export default app;
