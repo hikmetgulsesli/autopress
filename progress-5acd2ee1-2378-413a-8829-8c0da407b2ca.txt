@@ -1,4 +1,26 @@
 
+---
+US-004: SEO Preview Panel & Article Form - COMPLETED
+- Branch: US-004
+- PR: https://github.com/hikmetgulsesli/autopress/pull/10
+- Implemented: ContentStudio.tsx with full article form (title, content, meta description, slug, excerpt, category, featured image), SEO preview panel with Google SERP simulation, AI content generation integration, real-time character counters (title: 60, meta: 160), slug auto-generation, form submission via API
+- Tests: ContentStudio.test.tsx (15 tests), SEOPreviewPanel.test.tsx (13 tests) - all passing
+- Completed: Fri Feb 20 13:14:00 +03 2026
+
+---
+US-009: Publisher Page with Calendar & Queue - COMPLETED
+- Branch: us-009
+- PR: https://github.com/hikmetgulsesli/autopress/pull/9
+- Implemented: Publisher.tsx with queue view, calendar view (react-big-calendar), publish history, schedule modal with date/time picker, platform selection (WordPress/Blogger), cancel/reschedule functionality
+- Tests: 4 tests passing for Publisher page
+- Completed: Fri Feb 20 13:05:00 +03 2026
+
+---
+US-003: TipTap WYSIWYG Editor Integration - COMPLETED
+- Branch: US-003
+- PR: https://github.com/hikmetgulsesli/autopress/pull/8
+- Implemented: TipTap editor with toolbar (headings, bold, italic, lists, links), integrated into ContentStudio page
+- Completed: Fri Feb 20 12:55:00 +03 2026
 
 ---
 US-006: Blogger API Integration Service - COMPLETED
