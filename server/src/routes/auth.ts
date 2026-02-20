@@ -3,12 +3,13 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query } from '../db/connection';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { config, PASSWORD_REGEX } from '../config';
 
 const router = Router();
 
 function generateTokens(user: { id: number; email: string; role: string }) {
-  const accessToken = jwt.sign(user, process.env.JWT_SECRET!, { expiresIn: '1h' });
-  const refreshToken = jwt.sign(user, process.env.JWT_REFRESH_SECRET!, { expiresIn: '7d' });
+  const accessToken = jwt.sign(user, config.JWT_SECRET, { expiresIn: '1h' });
+  const refreshToken = jwt.sign(user, config.JWT_REFRESH_SECRET, { expiresIn: '7d' });
   return { accessToken, refreshToken };
 }
 
@@ -38,7 +39,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
     const { refreshToken } = req.body;
     if (!refreshToken) return res.status(400).json({ error: 'Refresh token gerekli' });
 
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!) as any;
+    const decoded = jwt.verify(refreshToken, config.JWT_REFRESH_SECRET) as any;
     const result = await query('SELECT * FROM users WHERE id = $1 AND refresh_token = $2', [decoded.id, refreshToken]);
     if (!result.rows[0]) return res.status(401).json({ error: 'Geçersiz refresh token' });
 

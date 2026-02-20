@@ -53,7 +53,7 @@ export interface Site {
   language: string;
   niche: string;
   is_active: boolean;
-  adsense_status?: string;
+  adsense_status?: 'approved' | 'pending' | 'rejected' | 'not_configured';
 }
 
 export interface PublishHistory {
