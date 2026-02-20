@@ -182,3 +182,22 @@ export interface LockedAccount {
   failed_login_attempts: number;
   locked_until: string;
 }
+
+export interface UpdateProfileRequest {
+  name?: string;
+  email?: string;
+  avatar?: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface NotificationSettings {
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  notifyOnPublishSuccess: boolean;
+  notifyOnPublishFailed: boolean;
+  notifyOnTrendingTopic: boolean;
+}
