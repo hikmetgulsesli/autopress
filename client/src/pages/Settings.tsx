@@ -1,9 +1,33 @@
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Key, Eye, EyeOff, Save, Loader2 } from 'lucide-react';
+import { Settings as SettingsIcon, Key, Globe, Cpu, Clock, FileText, Eye, EyeOff, Save, Loader2, Check } from 'lucide-react';
 import api from '../services/api';
-import type { ApiKeys, ApiKeyField } from '../types';
+import type { ApiKeys, ApiKeyField, GeneralSettings, LanguageOption, AIModelOption } from '../types';
 
 type Tab = 'general' | 'api-keys';
+
+// Available languages
+const LANGUAGES: LanguageOption[] = [
+  { code: 'tr', name: 'Türkçe' },
+  { code: 'en', name: 'English' },
+  { code: 'de', name: 'Deutsch' },
+  { code: 'fr', name: 'Français' },
+  { code: 'es', name: 'Español' },
+  { code: 'it', name: 'Italiano' },
+  { code: 'pt', name: 'Português' },
+  { code: 'ru', name: 'Русский' },
+  { code: 'ar', name: 'العربية' },
+  { code: 'zh', name: '中文' },
+];
+
+// Available AI models
+const AI_MODELS: AIModelOption[] = [
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
+  { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'OpenAI' },
+  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI' },
+  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+  { id: 'claude-3-haiku', name: 'Claude 3 Haiku', provider: 'Anthropic' },
+];
 
 const API_KEY_FIELDS: ApiKeyField[] = [
   {
@@ -90,6 +114,79 @@ function SecureInput({ id, value, placeholder, onChange, disabled }: SecureInput
   );
 }
 
+// Select input component
+interface SelectInputProps {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  disabled?: boolean;
+}
+
+function SelectInput({ id, value, onChange, options, disabled }: SelectInputProps) {
+  return (
+    <select
+      id={id}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-colors cursor-pointer"
+      style={{
+        backgroundColor: 'var(--color-surface)',
+        borderColor: 'var(--color-border)',
+        color: 'var(--color-text)',
+      }}
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// Number input with controls
+interface NumberInputProps {
+  id: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  disabled?: boolean;
+}
+
+function NumberInput({ id, value, onChange, min = 0, max, step = 1, disabled }: NumberInputProps) {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = parseInt(e.target.value, 10);
+    if (!isNaN(newValue)) {
+      onChange(Math.max(min, Math.min(max || newValue, newValue)));
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        id={id}
+        type="number"
+        value={value}
+        onChange={handleChange}
+        min={min}
+        max={max}
+        step={step}
+        disabled={disabled}
+        className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-colors"
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          borderColor: 'var(--color-border)',
+          color: 'var(--color-text)',
+        }}
+      />
+    </div>
+  );
+}
+
 // API Keys Tab Component
 interface ApiKeysTabProps {
   apiKeys: ApiKeys;
@@ -149,7 +246,8 @@ function ApiKeysTab({ apiKeys, onSave, saving, saved }: ApiKeysTabProps) {
                 {field.label}
               </label>
               {saved[field.key] && (
-                <span className="text-xs" style={{ color: 'var(--color-success)' }}>
+                <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-success)' }}>
+                  <Check className="w-3 h-3" />
                   Kaydedildi
                 </span>
               )}
@@ -213,7 +311,35 @@ function ApiKeysTab({ apiKeys, onSave, saving, saved }: ApiKeysTabProps) {
 }
 
 // General Tab Component
-function GeneralTab() {
+interface GeneralTabProps {
+  settings: GeneralSettings;
+  onSave: (key: keyof GeneralSettings, value: string | number) => Promise<void>;
+  saving: Record<string, boolean>;
+  saved: Record<string, boolean>;
+}
+
+function GeneralTab({ settings, onSave, saving, saved }: GeneralTabProps) {
+  const [values, setValues] = useState<GeneralSettings>(settings);
+
+  useEffect(() => {
+    setValues(settings);
+  }, [settings]);
+
+  const handleChange = <K extends keyof GeneralSettings>(key: K, value: GeneralSettings[K]) => {
+    setValues((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSave = async (key: keyof GeneralSettings) => {
+    await onSave(key, values[key] as string | number);
+  };
+
+  const hasChanges = (key: keyof GeneralSettings) => {
+    return values[key] !== settings[key];
+  };
+
+  const isSaving = (key: keyof GeneralSettings) => saving[`general_${key}`];
+  const isSaved = (key: keyof GeneralSettings) => saved[`general_${key}`];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
@@ -233,14 +359,237 @@ function GeneralTab() {
         </div>
       </div>
 
-      <div
-        className="p-8 rounded-xl border text-center"
-        style={{
-          backgroundColor: 'var(--color-surface-alt)',
-          borderColor: 'var(--color-border)',
-        }}
-      >
-        <p style={{ color: 'var(--color-text-muted)' }}>Genel ayarlar yakında eklenecek</p>
+      <div className="space-y-8">
+        {/* Language Setting */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4" style={{ color: 'var(--color-text-muted)' }} />
+              <label
+                htmlFor="language"
+                className="text-sm font-medium"
+                style={{ color: 'var(--color-text)' }}
+              >
+                Varsayılan Dil
+              </label>
+            </div>
+            {isSaved('language') && (
+              <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-success)' }}>
+                <Check className="w-3 h-3" />
+                Kaydedildi
+              </span>
+            )}
+          </div>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            Oluşturulan içeriklerin varsayılan dili
+          </p>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <SelectInput
+                id="language"
+                value={values.language}
+                onChange={(value) => handleChange('language', value)}
+                options={LANGUAGES.map((lang) => ({ value: lang.code, label: lang.name }))}
+                disabled={isSaving('language')}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSave('language')}
+              disabled={isSaving('language') || !hasChanges('language')}
+              className="px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              style={{
+                backgroundColor: hasChanges('language')
+                  ? 'var(--color-primary-400)'
+                  : 'var(--color-surface-alt)',
+                color: hasChanges('language')
+                  ? 'var(--color-surface)'
+                  : 'var(--color-text-muted)',
+              }}
+            >
+              {isSaving('language') ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Kaydet
+            </button>
+          </div>
+        </div>
+
+        {/* AI Model Setting */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Cpu className="w-4 h-4" style={{ color: 'var(--color-text-muted)' }} />
+              <label
+                htmlFor="ai_model"
+                className="text-sm font-medium"
+                style={{ color: 'var(--color-text)' }}
+              >
+                AI Model
+              </label>
+            </div>
+            {isSaved('ai_model') && (
+              <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-success)' }}>
+                <Check className="w-3 h-3" />
+                Kaydedildi
+              </span>
+            )}
+          </div>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            İçerik üretimi için kullanılacak AI modeli
+          </p>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <SelectInput
+                id="ai_model"
+                value={values.ai_model}
+                onChange={(value) => handleChange('ai_model', value)}
+                options={AI_MODELS.map((model) => ({ value: model.id, label: `${model.name} (${model.provider})` }))}
+                disabled={isSaving('ai_model')}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSave('ai_model')}
+              disabled={isSaving('ai_model') || !hasChanges('ai_model')}
+              className="px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              style={{
+                backgroundColor: hasChanges('ai_model')
+                  ? 'var(--color-primary-400)'
+                  : 'var(--color-surface-alt)',
+                color: hasChanges('ai_model')
+                  ? 'var(--color-surface)'
+                  : 'var(--color-text-muted)',
+              }}
+            >
+              {isSaving('ai_model') ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Kaydet
+            </button>
+          </div>
+        </div>
+
+        {/* Publish Jitter Setting */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4" style={{ color: 'var(--color-text-muted)' }} />
+              <label
+                htmlFor="publish_jitter_minutes"
+                className="text-sm font-medium"
+                style={{ color: 'var(--color-text)' }}
+              >
+                Yayın Jitter Süresi (dakika)
+              </label>
+            </div>
+            {isSaved('publish_jitter_minutes') && (
+              <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-success)' }}>
+                <Check className="w-3 h-3" />
+                Kaydedildi
+              </span>
+            )}
+          </div>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            Planlı yayın zamanına eklenecek rastgele gecikme aralığı (dakika cinsinden)
+          </p>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <NumberInput
+                id="publish_jitter_minutes"
+                value={values.publish_jitter_minutes}
+                onChange={(value) => handleChange('publish_jitter_minutes', value)}
+                min={0}
+                max={60}
+                disabled={isSaving('publish_jitter_minutes')}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSave('publish_jitter_minutes')}
+              disabled={isSaving('publish_jitter_minutes') || !hasChanges('publish_jitter_minutes')}
+              className="px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              style={{
+                backgroundColor: hasChanges('publish_jitter_minutes')
+                  ? 'var(--color-primary-400)'
+                  : 'var(--color-surface-alt)',
+                color: hasChanges('publish_jitter_minutes')
+                  ? 'var(--color-surface)'
+                  : 'var(--color-text-muted)',
+              }}
+            >
+              {isSaving('publish_jitter_minutes') ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Kaydet
+            </button>
+          </div>
+        </div>
+
+        {/* SEO Min Words Setting */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4" style={{ color: 'var(--color-text-muted)' }} />
+              <label
+                htmlFor="seo_min_words"
+                className="text-sm font-medium"
+                style={{ color: 'var(--color-text)' }}
+              >
+                SEO Minimum Kelime Sayısı
+              </label>
+            </div>
+            {isSaved('seo_min_words') && (
+              <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-success)' }}>
+                <Check className="w-3 h-3" />
+                Kaydedildi
+              </span>
+            )}
+          </div>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            İçeriklerin SEO için sahip olması gereken minimum kelime sayısı
+          </p>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <NumberInput
+                id="seo_min_words"
+                value={values.seo_min_words}
+                onChange={(value) => handleChange('seo_min_words', value)}
+                min={100}
+                max={5000}
+                step={50}
+                disabled={isSaving('seo_min_words')}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSave('seo_min_words')}
+              disabled={isSaving('seo_min_words') || !hasChanges('seo_min_words')}
+              className="px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              style={{
+                backgroundColor: hasChanges('seo_min_words')
+                  ? 'var(--color-primary-400)'
+                  : 'var(--color-surface-alt)',
+                color: hasChanges('seo_min_words')
+                  ? 'var(--color-surface)'
+                  : 'var(--color-text-muted)',
+              }}
+            >
+              {isSaving('seo_min_words') ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Kaydet
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -248,8 +597,14 @@ function GeneralTab() {
 
 // Main Settings Component
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<Tab>('api-keys');
+  const [activeTab, setActiveTab] = useState<Tab>('general');
   const [apiKeys, setApiKeys] = useState<ApiKeys>({});
+  const [generalSettings, setGeneralSettings] = useState<GeneralSettings>({
+    language: 'tr',
+    ai_model: 'gpt-4o',
+    publish_jitter_minutes: 15,
+    seo_min_words: 300,
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState<Record<string, boolean>>({});
@@ -273,6 +628,14 @@ export default function Settings() {
           search_console_refresh_token: settings.search_console_refresh_token || '',
         };
         setApiKeys(keys);
+
+        // Extract general settings from settings
+        setGeneralSettings({
+          language: settings.language || 'tr',
+          ai_model: settings.ai_model || 'gpt-4o',
+          publish_jitter_minutes: settings.publish_jitter_minutes || 15,
+          seo_min_words: settings.seo_min_words || 300,
+        });
       } catch (err) {
         setError('Ayarlar yüklenirken bir hata oluştu');
         console.error('Failed to load settings:', err);
@@ -308,6 +671,37 @@ export default function Settings() {
       console.error('Failed to save setting:', err);
     } finally {
       setSaving((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
+  // Save general setting
+  const handleSaveGeneralSetting = async (key: keyof GeneralSettings, value: string | number) => {
+    const saveKey = `general_${key}`;
+    try {
+      setSaving((prev) => ({ ...prev, [saveKey]: true }));
+      setError(null);
+
+      // Determine type based on key
+      const settingType = key === 'publish_jitter_minutes' || key === 'seo_min_words' ? 'number' : 'string';
+
+      await api.put(`/settings/${key}`, {
+        value,
+        type: settingType,
+      });
+
+      // Update local state
+      setGeneralSettings((prev) => ({ ...prev, [key]: value }));
+
+      // Show success indicator
+      setSaved((prev) => ({ ...prev, [saveKey]: true }));
+      setTimeout(() => {
+        setSaved((prev) => ({ ...prev, [saveKey]: false }));
+      }, 2000);
+    } catch (err) {
+      setError(`${key} kaydedilirken bir hata oluştu`);
+      console.error('Failed to save setting:', err);
+    } finally {
+      setSaving((prev) => ({ ...prev, [saveKey]: false }));
     }
   };
 
@@ -385,7 +779,14 @@ export default function Settings() {
           </div>
         ) : (
           <>
-            {activeTab === 'general' && <GeneralTab />}
+            {activeTab === 'general' && (
+              <GeneralTab
+                settings={generalSettings}
+                onSave={handleSaveGeneralSetting}
+                saving={saving}
+                saved={saved}
+              />
+            )}
             {activeTab === 'api-keys' && (
               <ApiKeysTab
                 apiKeys={apiKeys}

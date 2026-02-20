@@ -185,3 +185,22 @@ export interface ApiKeyField {
   placeholder: string;
   description?: string;
 }
+
+// General Settings Types
+export interface GeneralSettings {
+  language: string;
+  ai_model: string;
+  publish_jitter_minutes: number;
+  seo_min_words: number;
+}
+
+export interface LanguageOption {
+  code: string;
+  name: string;
+}
+
+export interface AIModelOption {
+  id: string;
+  name: string;
+  provider: string;
+}
