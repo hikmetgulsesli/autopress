@@ -57,6 +57,15 @@ export interface WordPressServiceError {
   details?: Record<string, unknown>;
 }
 
+// Site credentials interface
+interface SiteCredentials {
+  wordpress?: {
+    siteUrl?: string;
+    username?: string;
+    applicationPassword?: string;
+  };
+}
+
 // WordPress API client
 class WordPressClient {
   private client: AxiosInstance;
@@ -316,20 +325,70 @@ class WordPressClient {
   }
 }
 
-// Get WordPress config from environment or database
-const getWordPressConfig = (): WordPressConfig => {
+// Get WordPress config from environment variables (fallback)
+const getEnvWordPressConfig = (): WordPressConfig | null => {
   const siteUrl = process.env.WORDPRESS_SITE_URL;
   const username = process.env.WORDPRESS_USERNAME;
   const applicationPassword = process.env.WORDPRESS_APP_PASSWORD;
 
   if (!siteUrl || !username || !applicationPassword) {
-    throw {
-      code: 'MISSING_CONFIG',
-      message: 'WordPress configuration not found. Set WORDPRESS_SITE_URL, WORDPRESS_USERNAME, and WORDPRESS_APP_PASSWORD environment variables.',
-    } as WordPressServiceError;
+    return null;
   }
 
   return { siteUrl, username, applicationPassword };
+};
+
+// Get WordPress config from site record
+const getSiteWordPressConfig = async (siteId: number): Promise<WordPressConfig | null> => {
+  try {
+    const result = await query(
+      'SELECT api_credentials FROM sites WHERE id = $1',
+      [siteId]
+    );
+
+    if (!result.rows[0]?.api_credentials) {
+      return null;
+    }
+
+    const credentials = result.rows[0].api_credentials as SiteCredentials;
+    
+    if (!credentials.wordpress) {
+      return null;
+    }
+
+    const { siteUrl, username, applicationPassword } = credentials.wordpress;
+
+    if (!siteUrl || !username || !applicationPassword) {
+      return null;
+    }
+
+    return { siteUrl, username, applicationPassword };
+  } catch (err) {
+    console.error('Failed to fetch site credentials:', err);
+    return null;
+  }
+};
+
+// Get WordPress config - tries site first, falls back to env
+const getWordPressConfig = async (siteId?: number): Promise<WordPressConfig> => {
+  // If siteId provided, try to get credentials from site
+  if (siteId) {
+    const siteConfig = await getSiteWordPressConfig(siteId);
+    if (siteConfig) {
+      return siteConfig;
+    }
+  }
+
+  // Fall back to environment variables
+  const envConfig = getEnvWordPressConfig();
+  if (envConfig) {
+    return envConfig;
+  }
+
+  throw {
+    code: 'MISSING_CONFIG',
+    message: 'WordPress configuration not found. Set WORDPRESS_SITE_URL, WORDPRESS_USERNAME, and WORDPRESS_APP_PASSWORD environment variables or configure credentials in site settings.',
+  } as WordPressServiceError;
 };
 
 // Log publish history to database
@@ -337,13 +396,14 @@ const logPublishHistory = async (
   articleId: number,
   wordpressId: number,
   wordpressUrl: string,
-  status: string
+  status: string,
+  siteId?: number
 ): Promise<void> => {
   try {
     await query(
-      `INSERT INTO publish_history (article_id, wordpress_id, wordpress_url, status, published_at)
-       VALUES ($1, $2, $3, $4, NOW())`,
-      [articleId, wordpressId, wordpressUrl, status]
+      `INSERT INTO publish_history (article_id, site_id, wordpress_id, wordpress_url, status, published_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [articleId, siteId || null, wordpressId, wordpressUrl, status]
     );
   } catch (err) {
     console.error('Failed to log publish history:', err);
@@ -354,14 +414,15 @@ const logPublishHistory = async (
 
 export const publishPost = async (
   articleId: number,
-  post: WordPressPost
+  post: WordPressPost,
+  siteId?: number
 ): Promise<WordPressPublishResult> => {
-  const config = getWordPressConfig();
+  const config = await getWordPressConfig(siteId);
   const wp = new WordPressClient(config);
 
   const result = await wp.createPost(post);
   
-  await logPublishHistory(articleId, result.id, result.link, post.status);
+  await logPublishHistory(articleId, result.id, result.link, post.status, siteId);
 
   return {
     success: true,
@@ -373,9 +434,10 @@ export const publishPost = async (
 
 export const updatePost = async (
   wordpressId: number,
-  post: Partial<WordPressPost>
+  post: Partial<WordPressPost>,
+  siteId?: number
 ): Promise<WordPressPublishResult> => {
-  const config = getWordPressConfig();
+  const config = await getWordPressConfig(siteId);
   const wp = new WordPressClient(config);
 
   const result = await wp.updatePost(wordpressId, post);
@@ -388,15 +450,15 @@ export const updatePost = async (
   };
 };
 
-export const deletePost = async (wordpressId: number): Promise<boolean> => {
-  const config = getWordPressConfig();
+export const deletePost = async (wordpressId: number, siteId?: number): Promise<boolean> => {
+  const config = await getWordPressConfig(siteId);
   const wp = new WordPressClient(config);
 
   return wp.deletePost(wordpressId);
 };
 
-export const publishPage = async (page: WordPressPage): Promise<WordPressPublishResult> => {
-  const config = getWordPressConfig();
+export const publishPage = async (page: WordPressPage, siteId?: number): Promise<WordPressPublishResult> => {
+  const config = await getWordPressConfig(siteId);
   const wp = new WordPressClient(config);
 
   const result = await wp.createPage(page);
@@ -409,22 +471,22 @@ export const publishPage = async (page: WordPressPage): Promise<WordPressPublish
   };
 };
 
-export const uploadMedia = async (imageUrl: string, title?: string): Promise<WordPressMedia> => {
-  const config = getWordPressConfig();
+export const uploadMedia = async (imageUrl: string, title?: string, siteId?: number): Promise<WordPressMedia> => {
+  const config = await getWordPressConfig(siteId);
   const wp = new WordPressClient(config);
 
   return wp.uploadMedia(imageUrl, title);
 };
 
-export const getCategories = async (): Promise<Array<{ id: number; name: string }>> => {
-  const config = getWordPressConfig();
+export const getCategories = async (siteId?: number): Promise<Array<{ id: number; name: string }>> => {
+  const config = await getWordPressConfig(siteId);
   const wp = new WordPressClient(config);
 
   return wp.getCategories();
 };
 
-export const getTags = async (): Promise<Array<{ id: number; name: string }>> => {
-  const config = getWordPressConfig();
+export const getTags = async (siteId?: number): Promise<Array<{ id: number; name: string }>> => {
+  const config = await getWordPressConfig(siteId);
   const wp = new WordPressClient(config);
 
   return wp.getTags();
