@@ -1,0 +1,7 @@
+
+STORY: US-003 - CSS Variables Consistency Fix
+STATUS: completed
+PR: https://github.com/hikmetgulsesli/autopress/pull/82
+DATE: Sat Feb 21 01:23:03 +03 2026
+CHANGES: Replaced hardcoded dark-* Tailwind classes with CSS custom properties (--color-surface, --color-text, --color-border, etc.) across all pages including Login, Header, Sidebar, Dashboard, Settings, Site Manager, Profile Tab, SEO Tools, and Trend Explorer. Added CSS consistency test.
+TESTS: Added css-consistency.test.ts that verifies no dark-* classes are used and CSS variables are properly applied.
