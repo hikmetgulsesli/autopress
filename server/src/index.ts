@@ -14,6 +14,7 @@ import settingsRoutes from './routes/settings';
 import searchConsoleRoutes from './routes/searchconsole';
 import schedulerRoutes from './routes/scheduler';
 import imagesRoutes from './routes/images';
+import contentRoutes from './routes/content';
 import { startScheduler, getSchedulerStatus } from './services/scheduler.service';
 
 dotenv.config();
@@ -36,6 +37,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/search-console', searchConsoleRoutes);
 app.use('/api/scheduler', schedulerRoutes);
 app.use('/api/images', imagesRoutes);
+app.use('/api/content', contentRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

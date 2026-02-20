@@ -113,3 +113,23 @@ export interface ImageSearchMeta {
   totalPages: number;
   page: number;
 }
+
+// ============================================================================
+// Notification Settings Types
+// ============================================================================
+
+export interface NotificationSettings {
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  notifyOnPublishSuccess: boolean;
+  notifyOnPublishFailed: boolean;
+  notifyOnTrendingTopic: boolean;
+}
+
+export interface NotificationSettingsResponse {
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  notifyOnPublishSuccess: boolean;
+  notifyOnPublishFailed: boolean;
+  notifyOnTrendingTopic: boolean;
+}
