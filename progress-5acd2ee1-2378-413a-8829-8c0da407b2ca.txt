@@ -2,6 +2,16 @@
 
 
 ---
+US-021: Security Audit Logging Service - COMPLETED
+- Branch: US-021
+- PR: https://github.com/hikmetgulsesli/autopress/pull/46
+- Implemented: audit_logs table migration with all required columns (id, event_type, user_id, ip_address, user_agent, details, created_at), audit.service.ts with logSecurityEvent function, getAuditLogs() and getSecurityStats() helper functions, integration with auth routes for LOGIN_SUCCESS, LOGIN_FAILURE, LOGOUT events, integration with rate limiter for RATE_LIMIT_HIT events
+- Tests: 19 tests for audit service (all 267 tests passing)
+- Completed: Fri Feb 20 20:15:00 +03 2026
+- **Learnings:** Audit logging should be non-blocking - errors in logging should not break the application. Using PostgreSQL's INET type for IP addresses provides better storage and querying capabilities.
+---
+
+---
 US-005: Unsplash/Pexels Image Integration - COMPLETED
 - Branch: US-005
 - PR: https://github.com/hikmetgulsesli/autopress/pull/37
