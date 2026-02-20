@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useSiteStore, Site } from '../store/siteStore';
-import { Plus, Globe, Pencil, Trash2, X, Loader2, ExternalLink } from 'lucide-react';
+import { useSiteStore, Site, ConnectionTestResult } from '../store/siteStore';
+import { Plus, Globe, Pencil, Trash2, X, Loader2, ExternalLink, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
+
+type TestStatus = 'idle' | 'loading' | 'success' | 'error';
+
+interface TestState {
+  status: TestStatus;
+  message: string;
+  siteId: number | null;
+}
 
 function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () => void; onSave: (data: Partial<Site>) => Promise<void> }) {
   const [form, setForm] = useState<{
@@ -105,9 +113,10 @@ const adsenseColors: Record<string, string> = { pending: 'text-dark-400', applie
 const adsenseLabels: Record<string, string> = { pending: 'Beklemede', applied: 'Başvuruldu', approved: 'Onaylı', rejected: 'Reddedildi' };
 
 export default function SiteManager() {
-  const { sites, isLoading, fetchSites, createSite, updateSite, deleteSite } = useSiteStore();
+  const { sites, isLoading, fetchSites, createSite, updateSite, deleteSite, testConnection } = useSiteStore();
   const [showForm, setShowForm] = useState(false);
   const [editSite, setEditSite] = useState<Site | null>(null);
+  const [testState, setTestState] = useState<TestState>({ status: 'idle', message: '', siteId: null });
 
   useEffect(() => { fetchSites(); }, []);
 
@@ -118,6 +127,28 @@ export default function SiteManager() {
 
   const handleDelete = async (id: number) => {
     if (confirm('Bu siteyi silmek istediğinize emin misiniz?')) await deleteSite(id);
+  };
+
+  const handleTestConnection = async (site: Site) => {
+    setTestState({ status: 'loading', message: '', siteId: site.id });
+    try {
+      const result: ConnectionTestResult = await testConnection(site.id);
+      setTestState({ status: 'success', message: result.message, siteId: site.id });
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setTestState((prev) => (prev.siteId === site.id ? { status: 'idle', message: '', siteId: null } : prev));
+      }, 5000);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error?.message || 'Bağlantı testi başarısız oldu';
+      setTestState({ status: 'error', message: errorMessage, siteId: site.id });
+    }
+  };
+
+  const getTestButtonIcon = (siteId: number) => {
+    if (testState.status === 'loading' && testState.siteId === siteId) {
+      return <Loader2 className="w-4 h-4 animate-spin" />;
+    }
+    return <RefreshCw className="w-4 h-4" />;
   };
 
   return (
@@ -179,6 +210,34 @@ export default function SiteManager() {
                   AdSense: {adsenseLabels[site.adsense_status] || site.adsense_status}
                 </span>
               </div>
+              
+              {/* Test Connection Button */}
+              <div className="mt-4 pt-4 border-t border-dark-700">
+                <button
+                  onClick={() => handleTestConnection(site)}
+                  disabled={testState.status === 'loading' && testState.siteId === site.id}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-dark-300 hover:text-white bg-dark-800 hover:bg-dark-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  aria-label={`${site.name} bağlantısını test et`}
+                >
+                  {getTestButtonIcon(site.id)}
+                  Bağlantıyı Test Et
+                </button>
+                
+                {/* Status Messages */}
+                {testState.siteId === site.id && testState.status === 'success' && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 px-3 py-2 rounded-lg" role="alert">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                    <span>{testState.message}</span>
+                  </div>
+                )}
+                {testState.siteId === site.id && testState.status === 'error' && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg" role="alert">
+                    <XCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{testState.message}</span>
+                  </div>
+                )}
+              </div>
+              
               {!site.is_active && (
                 <div className="mt-3 text-xs text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg">Pasif</div>
               )}
