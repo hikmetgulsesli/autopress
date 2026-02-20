@@ -2,6 +2,22 @@
 
 
 ---
+US-005: Unsplash/Pexels Image Integration - COMPLETED
+- Branch: US-005
+- PR: https://github.com/hikmetgulsesli/autopress/pull/37
+- Implemented: Image search service with Unsplash API integration (free tier), /api/images/search and /api/images/random endpoints, ImageSearch component with search input and responsive grid, ImageAttribution component for displaying photo credits, ContentStudio integration with featured image selection and attribution display
+- Tests: 18 tests for image service (all 124 tests passing)
+- Completed: Fri Feb 20 16:12:00 +03 2026
+
+---
+US-014: Trend Explorer Page - COMPLETED
+- Branch: US-014
+- PR: https://github.com/hikmetgulsesli/autopress/pull/36
+- Implemented: TrendExplorer.tsx with Google Trends data visualization, keyword table with volume/competition/CPC/trend scores, scoring algorithm (score = volume*0.4 + cpc*0.3 + trend_rising*0.3), region/language filter dropdowns (12 regions, 8 languages), trending chart visualization using recharts AreaChart, 'Bu Konuda Yaz' button redirecting to ContentStudio with pre-filled topic, RSS feed items display section, RSS API routes for fetching news feeds
+- Tests: 15 tests for TrendExplorer page (all 36 tests passing)
+- Completed: Fri Feb 20 16:07:00 +03 2026
+
+---
 US-013: RSS Feed Aggregator Service - COMPLETED
 - Branch: US-013
 - PR: https://github.com/hikmetgulsesli/autopress/pull/34
@@ -16,6 +32,14 @@ US-015: SEO Scoring Service - COMPLETED
 - Implemented: seo.service.ts with calculateSEOScore() function, title length check (50-60 chars), meta description check (150-160 chars), keyword density calculation (1-3%), H2/H3 usage analysis, image alt tag presence check, internal/external link counting, Flesch Reading Ease readability score, overall 0-100 score with breakdown and recommendations
 - Tests: 28 tests for SEO service
 - Completed: Fri Feb 20 15:56:00 +03 2026
+
+---
+US-003: TipTap WYSIWYG Editor Integration - COMPLETED
+- Branch: US-003
+- PR: https://github.com/hikmetgulsesli/autopress/pull/35
+- Implemented: TipTap editor (@tiptap/react, @tiptap/starter-kit) integrated into ContentStudio page, reusable TipTapEditor component with toolbar (headings, bold, italic, bullet/ordered lists, links), onChange callback for content sync, dark theme styling with CSS custom properties
+- Tests: 7 tests for TipTapEditor component
+- Completed: Fri Feb 20 16:01:00 +03 2026
 
 ---
 US-010: Google Search Console Indexing API - COMPLETED
