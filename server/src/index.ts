@@ -11,6 +11,7 @@ import trendsRoutes from './routes/trends';
 import publishRoutes from './routes/publish';
 import seoRoutes from './routes/seo';
 import settingsRoutes from './routes/settings';
+import contentRoutes from './routes/content';
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use('/api/trends', trendsRoutes);
 app.use('/api/publish', publishRoutes);
 app.use('/api/seo', seoRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/content', contentRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
