@@ -53,6 +53,7 @@ export interface Site {
   language: string;
   niche: string;
   is_active: boolean;
+  adsense_status?: string;
 }
 
 export interface PublishHistory {
