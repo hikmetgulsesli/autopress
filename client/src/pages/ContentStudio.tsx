@@ -54,10 +54,20 @@ export default function ContentStudio() {
           <button
             type="button"
             onClick={handleSave}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            disabled={isSaving}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
-            <Save className="w-4 h-4" />
-            Kaydet
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Kaydediliyor...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                {isNewArticle ? 'Kaydet' : 'Güncelle'}
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -68,13 +78,13 @@ export default function ContentStudio() {
           {/* Title Input */}
           <div className="space-y-2">
             <label htmlFor="article-title" className="block text-sm font-medium text-text">
-              Başlık
+              Başlık *
             </label>
             <input
               id="article-title"
               type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={formData.title}
+              onChange={(e) => handleChange('title', e.target.value)}
               placeholder="Makale başlığını girin..."
               className="w-full px-4 py-3 bg-surface-alt border border-border rounded-xl text-text text-lg font-medium placeholder:text-text-muted focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200"
             />
@@ -83,25 +93,111 @@ export default function ContentStudio() {
           {/* Content Editor */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-text">
-              İçerik
+              İçerik *
             </label>
             {isPreview ? (
               <div 
                 className="border border-border rounded-xl overflow-hidden bg-surface-alt min-h-[300px] px-4 py-3 prose prose-invert prose-zinc max-w-none"
-                dangerouslySetInnerHTML={{ __html: content }}
+                dangerouslySetInnerHTML={{ __html: formData.content }}
               />
             ) : (
               <TipTapEditor
-                content={content}
-                onChange={setContent}
+                content={formData.content}
+                onChange={(value) => handleChange('content', value)}
                 placeholder="Makale içeriğini yazmaya başlayın..."
               />
             )}
+          </div>
+
+          {/* Excerpt */}
+          <div className="space-y-2">
+            <label htmlFor="article-excerpt" className="block text-sm font-medium text-text">
+              Özet
+            </label>
+            <textarea
+              id="article-excerpt"
+              value={formData.excerpt}
+              onChange={(e) => handleChange('excerpt', e.target.value)}
+              placeholder="Makale özeti girin (opsiyonel)"
+              rows={3}
+              className="w-full px-4 py-3 bg-surface-alt border border-border rounded-xl text-text placeholder:text-text-muted focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200 resize-none"
+            />
+          </div>
+
+          {/* Meta Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="meta-title" className="block text-sm font-medium text-text">
+                Meta Başlık
+              </label>
+              <input
+                id="meta-title"
+                type="text"
+                value={formData.meta_title}
+                onChange={(e) => handleChange('meta_title', e.target.value)}
+                placeholder="SEO meta başlığı"
+                className="w-full px-4 py-3 bg-surface-alt border border-border rounded-xl text-text placeholder:text-text-muted focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="meta-description" className="block text-sm font-medium text-text">
+                Meta Açıklama
+              </label>
+              <input
+                id="meta-description"
+                type="text"
+                value={formData.meta_description}
+                onChange={(e) => handleChange('meta_description', e.target.value)}
+                placeholder="SEO meta açıklaması"
+                className="w-full px-4 py-3 bg-surface-alt border border-border rounded-xl text-text placeholder:text-text-muted focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200"
+              />
+            </div>
           </div>
         </div>
 
         {/* Sidebar Column */}
         <div className="space-y-4">
+          {/* Status & Language */}
+          <div className="bg-surface-alt border border-border rounded-xl p-4 space-y-4"
+            style={{ backgroundColor: 'var(--color-surface-alt)', borderColor: 'var(--color-border)' }}
+          >
+            <div className="space-y-2">
+              <label htmlFor="article-status" className="block text-sm font-medium text-text">
+                Durum
+              </label>
+              <select
+                id="article-status"
+                value={formData.status}
+                onChange={(e) => handleChange('status', e.target.value)}
+                className="w-full px-4 py-2 bg-surface border border-border rounded-lg text-text cursor-pointer focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200"
+                style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+              >
+                <option value="draft">Taslak</option>
+                <option value="review">İncelemede</option>
+                <option value="scheduled">Planlandı</option>
+                <option value="published">Yayınlandı</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="article-language" className="block text-sm font-medium text-text">
+                Dil
+              </label>
+              <select
+                id="article-language"
+                value={formData.language}
+                onChange={(e) => handleChange('language', e.target.value)}
+                className="w-full px-4 py-2 bg-surface border border-border rounded-lg text-text cursor-pointer focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200"
+                style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+              >
+                <option value="tr">Türkçe</option>
+                <option value="en">English</option>
+                <option value="de">Deutsch</option>
+                <option value="fr">Français</option>
+              </select>
+            </div>
+          </div>
+
           {/* Featured Image Card */}
           <div className="bg-surface-alt border border-border rounded-xl p-4 space-y-4"
             style={{ backgroundColor: 'var(--color-surface-alt)', borderColor: 'var(--color-border)' }}
@@ -207,6 +303,8 @@ export default function ContentStudio() {
           </div>
         </div>
       </div>
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
