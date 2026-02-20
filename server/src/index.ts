@@ -1,7 +1,8 @@
+import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
+import { config } from './config';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import authRoutes from './routes/auth';
@@ -18,12 +19,10 @@ import rssRoutes from './routes/rss';
 import bulkSeoRoutes from './routes/bulkseo';
 import { startScheduler, getSchedulerStatus } from './services/scheduler.service';
 
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 4519;
+const PORT = config.PORT;
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:3519', credentials: true }));
+app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(morgan('combined', { stream: { write: (msg: string) => logger.info(msg.trim()) } }));
 
@@ -49,6 +48,16 @@ app.get('/api/health', (_req, res) => {
     version: '1.0.0',
     scheduler: getSchedulerStatus(),
   });
+});
+
+
+// Serve client build (production)
+const clientDist = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDist));
+
+// SPA fallback — serve index.html for all non-API routes
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(clientDist, 'index.html'));
 });
 
 app.use(errorHandler);
