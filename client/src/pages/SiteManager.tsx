@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSiteStore, Site, ApiCredentials } from '../store/siteStore';
-import { Plus, Globe, Pencil, Trash2, X, Loader2, ExternalLink } from 'lucide-react';
+import { Plus, Globe, Pencil, Trash2, X, Loader2, ExternalLink, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
 interface SiteFormData {
   name: string;
@@ -212,10 +212,14 @@ const platformColors: Record<string, string> = { blogger: 'bg-orange-500', wordp
 const adsenseColors: Record<string, string> = { pending: 'text-dark-400', applied: 'text-yellow-400', approved: 'text-emerald-400', rejected: 'text-red-400' };
 const adsenseLabels: Record<string, string> = { pending: 'Beklemede', applied: 'Başvuruldu', approved: 'Onaylı', rejected: 'Reddedildi' };
 
+type TestStatus = { type: 'success' | 'error' | null; message: string };
+
 export default function SiteManager() {
-  const { sites, isLoading, fetchSites, createSite, updateSite, deleteSite } = useSiteStore();
+  const { sites, isLoading, fetchSites, createSite, updateSite, deleteSite, testConnection } = useSiteStore();
   const [showForm, setShowForm] = useState(false);
   const [editSite, setEditSite] = useState<Site | null>(null);
+  const [testingSiteId, setTestingSiteId] = useState<number | null>(null);
+  const [testStatus, setTestStatus] = useState<Record<number, TestStatus>>({});
 
   useEffect(() => { fetchSites(); }, []);
 
@@ -226,6 +230,29 @@ export default function SiteManager() {
 
   const handleDelete = async (id: number) => {
     if (confirm('Bu siteyi silmek istediğinize emin misiniz?')) await deleteSite(id);
+  };
+
+  const handleTestConnection = async (site: Site) => {
+    setTestingSiteId(site.id);
+    setTestStatus(prev => ({ ...prev, [site.id]: { type: null, message: '' } }));
+    
+    try {
+      const result = await testConnection(site.id);
+      setTestStatus(prev => ({
+        ...prev,
+        [site.id]: { type: 'success', message: result.message }
+      }));
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.error?.message || 
+        error?.message || 
+        'Bağlantı testi başarısız oldu';
+      setTestStatus(prev => ({
+        ...prev,
+        [site.id]: { type: 'error', message: errorMessage }
+      }));
+    } finally {
+      setTestingSiteId(null);
+    }
   };
 
   return (
@@ -287,6 +314,48 @@ export default function SiteManager() {
                   AdSense: {adsenseLabels[site.adsense_status] || site.adsense_status}
                 </span>
               </div>
+              
+              {/* Test Connection Button */}
+              <div className="mt-4">
+                <button
+                  onClick={() => handleTestConnection(site)}
+                  disabled={testingSiteId === site.id}
+                  aria-label="Bağlantıyı Test Et"
+                  className="w-full py-2 px-3 bg-dark-800 hover:bg-dark-700 text-dark-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {testingSiteId === site.id ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Test ediliyor...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      Bağlantıyı Test Et
+                    </>
+                  )}
+                </button>
+                
+                {/* Test Status Alert */}
+                {testStatus[site.id]?.type && (
+                  <div 
+                    role="alert"
+                    className={`mt-2 p-3 rounded-lg text-sm flex items-start gap-2 ${
+                      testStatus[site.id].type === 'success' 
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                        : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                    }`}
+                  >
+                    {testStatus[site.id].type === 'success' ? (
+                      <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    ) : (
+                      <XCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    )}
+                    <span>{testStatus[site.id].message}</span>
+                  </div>
+                )}
+              </div>
+              
               {!site.is_active && (
                 <div className="mt-3 text-xs text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg">Pasif</div>
               )}
