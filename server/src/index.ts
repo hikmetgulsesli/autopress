@@ -1,10 +1,12 @@
 import express from 'express';
+import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { authLimiter, apiLimiter } from './middleware/rateLimiter';
+import { securityHeaders } from './middleware/securityHeaders';
 import authRoutes from './routes/auth';
 import sitesRoutes from './routes/sites';
 import articlesRoutes from './routes/articles';
@@ -27,6 +29,7 @@ const PORT = process.env.PORT || 4519;
 app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:3519', credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(morgan('combined', { stream: { write: (msg: string) => logger.info(msg.trim()) } }));
+app.use(securityHeaders);
 
 // Apply rate limiters
 app.use('/api/auth', authLimiter);
