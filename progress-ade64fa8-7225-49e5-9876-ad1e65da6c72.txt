@@ -1,0 +1,30 @@
+# Progress Log - Run ID: ade64fa8-7225-49e5-9876-ad1e65da6c72
+
+## Completed Stories
+- US-001: Settings Page - General Tab
+- US-004: Settings Page - Notifications Tab
+- US-005: TrendExplorer - Basic List View
+- US-006: TrendExplorer - Search Functionality
+
+## Codebase Patterns
+
+### API Pattern
+- Use parameterized queries with $1, $2 syntax for PostgreSQL
+- Return wrapped responses: { data: [], meta: {} }
+- Use typed error responses: { error: { code: string, message: string } }
+
+### Component Pattern
+- Use useCallback for event handlers
+- Use useState for local state
+- Use lucide-react for icons (Search, X, etc.)
+- Follow existing styling with Tailwind classes
+
+### Testing Pattern
+- Mock API calls with jest.mock
+- Use waitFor for async assertions
+- Test user interactions with fireEvent
+- Test accessibility with getByLabelText
+
+## Notes
+- Worktree node_modules symlink causes typecheck issues but build works from main repo
+- Always fix merge conflict markers when found
