@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { query } from '../db/connection';
 import { logger } from '../utils/logger';
 import * as wordpressService from './wordpress.service';
+import * as bloggerService from './blogger.service';
 import * as searchConsoleService from './searchconsole.service';
 import { pollAllFeeds } from './rss.service';
 
@@ -21,8 +22,8 @@ export interface PublishQueueItem {
   last_attempt_at: Date | null;
   error_message: string | null;
   published_at: Date | null;
-  wordpress_id: number | null;
-  wordpress_url: string | null;
+  platform_post_id: string | null;
+  platform_post_url: string | null;
 }
 
 export interface Schedule {
@@ -133,14 +134,39 @@ export const getDueArticles = async (): Promise<PublishQueueItem[]> => {
 };
 
 /**
+ * Get site platform information
+ */
+const getSitePlatform = async (siteId: number | null): Promise<{ platform: 'wordpress' | 'blogger'; blogId?: string } | null> => {
+  if (!siteId) return null;
+  
+  try {
+    const result = await query(
+      `SELECT platform, platform_id FROM sites WHERE id = $1`,
+      [siteId]
+    );
+    
+    if (result.rows.length === 0) return null;
+    
+    const site = result.rows[0];
+    return {
+      platform: site.platform,
+      blogId: site.platform_id,
+    };
+  } catch (err) {
+    logger.error(`Failed to get site platform for site ${siteId}:`, err);
+    return null;
+  }
+};
+
+/**
  * Update queue item status
  */
 export const updateQueueStatus = async (
   queueId: number,
   status: PublishStatus,
   errorMessage?: string,
-  wordpressId?: number,
-  wordpressUrl?: string
+  platformPostId?: string,
+  platformPostUrl?: string
 ): Promise<void> => {
   try {
     const updates: string[] = ['status = $1', 'updated_at = NOW()'];
@@ -152,14 +178,14 @@ export const updateQueueStatus = async (
       params.push(errorMessage);
     }
 
-    if (wordpressId !== undefined) {
-      updates.push(`wordpress_id = $${paramIndex++}`);
-      params.push(wordpressId);
+    if (platformPostId !== undefined) {
+      updates.push(`platform_post_id = $${paramIndex++}`);
+      params.push(platformPostId);
     }
 
-    if (wordpressUrl !== undefined) {
-      updates.push(`wordpress_url = $${paramIndex++}`);
-      params.push(wordpressUrl);
+    if (platformPostUrl !== undefined) {
+      updates.push(`platform_post_url = $${paramIndex++}`);
+      params.push(platformPostUrl);
     }
 
     if (status === 'publishing') {
@@ -232,7 +258,7 @@ const updateArticleStatus = async (
 };
 
 /**
- * Publish a single article to WordPress
+ * Publish a single article to the appropriate platform (WordPress or Blogger)
  */
 export const publishArticle = async (queueItem: PublishQueueItem): Promise<void> => {
   const { id: queueId, article_id, site_id, attempts, max_attempts } = queueItem;
@@ -247,39 +273,101 @@ export const publishArticle = async (queueItem: PublishQueueItem): Promise<void>
       throw new Error(`Article ${article_id} not found`);
     }
 
-    // Prepare post data
-    const postData: wordpressService.WordPressPost = {
-      title: article.title,
-      content: article.content,
-      excerpt: article.excerpt || undefined,
-      slug: article.slug || undefined,
-      status: 'publish',
+    // Get site platform information
+    const siteInfo = await getSitePlatform(site_id);
+    const platform = siteInfo?.platform || 'wordpress';
+
+    let publishResult: {
+      success: boolean;
+      postId: string;
+      postUrl: string;
+      platform: 'wordpress' | 'blogger';
     };
 
-    // Publish to WordPress
-    const result = await wordpressService.publishPost(article_id, postData);
+    if (platform === 'blogger') {
+      // Publish to Blogger
+      if (!siteInfo?.blogId) {
+        throw new Error('Blogger blog ID not configured for site');
+      }
+
+      // Get site credentials for Blogger
+      const siteResult = await query(
+        `SELECT api_credentials FROM sites WHERE id = $1`,
+        [site_id]
+      );
+
+      if (siteResult.rows.length === 0 || !siteResult.rows[0].api_credentials?.blogger) {
+        throw new Error('Blogger credentials not found for site');
+      }
+
+      const bloggerCreds = siteResult.rows[0].api_credentials.blogger;
+      
+      // Set credentials for Blogger service
+      bloggerService.setCredentials({
+        accessToken: bloggerCreds.oauth_token,
+        refreshToken: bloggerCreds.oauth_refresh_token,
+        expiryDate: new Date(bloggerCreds.oauth_expires_at).getTime(),
+      });
+
+      const result = await bloggerService.publishPost(
+        {
+          blogId: siteInfo.blogId,
+          title: article.title,
+          content: article.content,
+          labels: [], // Could be enhanced to use categories as labels
+          isDraft: false,
+        },
+        article_id,
+        site_id || undefined
+      );
+
+      publishResult = {
+        success: true,
+        postId: result.id,
+        postUrl: result.url,
+        platform: 'blogger',
+      };
+    } else {
+      // Publish to WordPress
+      const postData: wordpressService.WordPressPost = {
+        title: article.title,
+        content: article.content,
+        excerpt: article.excerpt || undefined,
+        slug: article.slug || undefined,
+        status: 'publish',
+      };
+
+      const result = await wordpressService.publishPost(article_id, postData);
+
+      publishResult = {
+        success: true,
+        postId: result.wordpressId.toString(),
+        postUrl: result.wordpressUrl,
+        platform: 'wordpress',
+      };
+    }
 
     // Update queue status to published
-    await updateQueueStatus(queueId, 'published', undefined, result.wordpressId, result.wordpressUrl);
+    await updateQueueStatus(queueId, 'published', undefined, publishResult.postId, publishResult.postUrl);
 
     // Update article status
-    await updateArticleStatus(article_id, 'published', result.wordpressUrl);
+    await updateArticleStatus(article_id, 'published', publishResult.postUrl);
 
-    // Auto-submit to Google Search Console for indexing
+    // Auto-submit to Google Search Console for indexing (WordPress only)
     let indexingSubmitted = false;
     let indexingError: string | undefined;
-    try {
-      if (result.wordpressUrl) {
-        const indexResult = await searchConsoleService.autoSubmitAfterPublish(result.wordpressUrl, article_id);
+    if (platform === 'wordpress' && publishResult.postUrl) {
+      try {
+        const indexResult = await searchConsoleService.autoSubmitAfterPublish(publishResult.postUrl, article_id);
         indexingSubmitted = indexResult.success;
         if (!indexResult.success) {
           indexingError = indexResult.message;
         }
+      } catch (indexErr) {
+        logger.warn(`Auto-indexing failed for article ${article_id}:`, indexErr);
+        indexingError = indexErr instanceof Error ? indexErr.message : 'Unknown indexing error';
+        // Don't fail the publish if indexing fails
       }
-    } catch (indexErr) {
-      logger.warn(`Auto-indexing failed for article ${article_id}:`, indexErr);
-      indexingError = indexErr instanceof Error ? indexErr.message : 'Unknown indexing error';
-      // Don't fail the publish if indexing fails
     }
 
     // Log success
@@ -287,19 +375,23 @@ export const publishArticle = async (queueItem: PublishQueueItem): Promise<void>
       article_id,
       site_id,
       queueId,
-      'wordpress',
+      platform,
       'published',
-      result.wordpressId.toString(),
+      publishResult.postId,
       undefined,
       attempts + 1,
       indexingSubmitted,
       indexingError
     );
 
-    logger.info(`Successfully published article ${article_id} to WordPress (ID: ${result.wordpressId})${indexingSubmitted ? ' and submitted for indexing' : ''}`);
+    logger.info(`Successfully published article ${article_id} to ${platform} (ID: ${publishResult.postId})${indexingSubmitted ? ' and submitted for indexing' : ''}`);
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
     const newAttempts = attempts + 1;
+
+    // Get site platform for logging
+    const siteInfo = await getSitePlatform(site_id);
+    const platform = siteInfo?.platform || 'wordpress';
 
     // Determine if we should retry
     if (newAttempts >= max_attempts) {
@@ -307,11 +399,11 @@ export const publishArticle = async (queueItem: PublishQueueItem): Promise<void>
       await updateQueueStatus(queueId, 'failed', errorMessage);
       await updateArticleStatus(article_id, 'publish_failed');
 
-      logger.error(`Failed to publish article ${article_id} after ${max_attempts} attempts: ${errorMessage}`);
+      logger.error(`Failed to publish article ${article_id} to ${platform} after ${max_attempts} attempts: ${errorMessage}`);
     } else {
       // Retry later - keep as pending
       await updateQueueStatus(queueId, 'pending', errorMessage);
-      logger.warn(`Publish attempt ${newAttempts} failed for article ${article_id}, will retry: ${errorMessage}`);
+      logger.warn(`Publish attempt ${newAttempts} failed for article ${article_id} to ${platform}, will retry: ${errorMessage}`);
     }
 
     // Log failure
@@ -319,7 +411,7 @@ export const publishArticle = async (queueItem: PublishQueueItem): Promise<void>
       article_id,
       site_id,
       queueId,
-      'wordpress',
+      platform,
       'failed',
       undefined,
       errorMessage,

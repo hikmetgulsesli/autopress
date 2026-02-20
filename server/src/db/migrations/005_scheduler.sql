@@ -12,11 +12,33 @@ CREATE TABLE IF NOT EXISTS publish_queue (
   last_attempt_at TIMESTAMPTZ,
   error_message TEXT,
   published_at TIMESTAMPTZ,
-  wordpress_id INTEGER,
-  wordpress_url TEXT,
+  platform_post_id VARCHAR(255),
+  platform_post_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migrate existing data from old columns if they exist
+DO $$
+BEGIN
+  -- Check if old wordpress_id column exists
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_name = 'publish_queue' AND column_name = 'wordpress_id') THEN
+    -- Copy data from wordpress_id to platform_post_id
+    UPDATE publish_queue 
+    SET platform_post_id = wordpress_id::VARCHAR 
+    WHERE wordpress_id IS NOT NULL AND platform_post_id IS NULL;
+  END IF;
+
+  -- Check if old wordpress_url column exists
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_name = 'publish_queue' AND column_name = 'wordpress_url') THEN
+    -- Copy data from wordpress_url to platform_post_url
+    UPDATE publish_queue 
+    SET platform_post_url = wordpress_url 
+    WHERE wordpress_url IS NOT NULL AND platform_post_url IS NULL;
+  END IF;
+END $$;
 
 -- Create index for efficient queue queries
 CREATE INDEX IF NOT EXISTS idx_publish_queue_status ON publish_queue(status);

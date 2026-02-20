@@ -22,6 +22,17 @@ vi.mock('../services/wordpress.service', () => ({
   WordPressPost: {},
 }));
 
+// Mock blogger service
+vi.mock('../services/blogger.service', () => ({
+  publishPost: vi.fn(),
+  setCredentials: vi.fn(),
+}));
+
+// Mock search console service
+vi.mock('../services/searchconsole.service', () => ({
+  autoSubmitAfterPublish: vi.fn(),
+}));
+
 describe('SchedulerService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -124,14 +135,14 @@ describe('SchedulerService', () => {
       );
     });
 
-    it('should update status to published with WordPress details', async () => {
+    it('should update status to published with platform details', async () => {
       (query as any).mockResolvedValueOnce({ rows: [] });
 
-      await schedulerService.updateQueueStatus(1, 'published', undefined, 123, 'https://example.com/post');
+      await schedulerService.updateQueueStatus(1, 'published', undefined, 'post-123', 'https://example.com/post');
 
       expect(query).toHaveBeenCalledWith(
-        expect.stringContaining("wordpress_id"),
-        expect.arrayContaining(['published', 123, 'https://example.com/post'])
+        expect.stringContaining("platform_post_id"),
+        expect.arrayContaining(['published', 'post-123', 'https://example.com/post'])
       );
     });
 
@@ -351,9 +362,15 @@ describe('SchedulerService', () => {
         site_id: 1,
       };
 
+      const mockSite = {
+        platform: 'wordpress',
+        platform_id: null,
+      };
+
       (query as any)
         .mockResolvedValueOnce({ rows: mockArticles })  // getDueArticles
         .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (publishing)
+        .mockResolvedValueOnce({ rows: [mockSite] })    // getSitePlatform
         .mockResolvedValueOnce({ rows: [mockArticle] }) // getArticleForPublish
         .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (published)
         .mockResolvedValueOnce({ rows: [] })            // updateArticleStatus
@@ -391,9 +408,15 @@ describe('SchedulerService', () => {
         site_id: 1,
       };
 
+      const mockSite = {
+        platform: 'wordpress',
+        platform_id: null,
+      };
+
       (query as any)
         .mockResolvedValueOnce({ rows: mockArticles })
         .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (publishing)
+        .mockResolvedValueOnce({ rows: [mockSite] })    // getSitePlatform
         .mockResolvedValueOnce({ rows: [mockArticle] }) // getArticleForPublish
         .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (pending - retry)
         .mockResolvedValueOnce({ rows: [] });           // logPublishHistory
@@ -416,6 +439,221 @@ describe('SchedulerService', () => {
       expect(stats.processed).toBe(0);
       expect(stats.published).toBe(0);
       expect(stats.failed).toBe(0);
+    });
+  });
+
+  describe('Blogger Scheduler Integration', () => {
+    it('should publish article to Blogger when site platform is blogger', async () => {
+      const mockArticles = [
+        { id: 1, article_id: 101, site_id: 2, status: 'pending', attempts: 0, max_attempts: 3 },
+      ];
+
+      const mockArticle = {
+        id: 101,
+        title: 'Test Blogger Article',
+        content: 'Test content for blogger',
+        excerpt: null,
+        slug: 'test-blogger-article',
+        meta_title: null,
+        meta_description: null,
+        featured_image_url: null,
+        site_id: 2,
+      };
+
+      const mockSite = {
+        platform: 'blogger',
+        platform_id: '123456789',
+        api_credentials: {
+          blogger: {
+            oauth_token: 'test-access-token',
+            oauth_refresh_token: 'test-refresh-token',
+            oauth_expires_at: '2025-12-31T23:59:59Z',
+          },
+        },
+      };
+
+      (query as any)
+        .mockResolvedValueOnce({ rows: mockArticles })  // getDueArticles
+        .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (publishing)
+        .mockResolvedValueOnce({ rows: [mockArticle] }) // getArticleForPublish
+        .mockResolvedValueOnce({ rows: [mockSite] })    // getSitePlatform
+        .mockResolvedValueOnce({ rows: [mockSite] })    // get site credentials
+        .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (published)
+        .mockResolvedValueOnce({ rows: [] })            // updateArticleStatus
+        .mockResolvedValueOnce({ rows: [] });           // logPublishHistory
+
+      const { publishPost: bloggerPublishPost, setCredentials } = await import('../services/blogger.service');
+      (bloggerPublishPost as any).mockResolvedValueOnce({
+        id: 'post-123',
+        blogId: '123456789',
+        title: 'Test Blogger Article',
+        url: 'https://testblog.blogspot.com/2024/01/test-article.html',
+        published: '2024-01-01T12:00:00Z',
+      });
+
+      const stats = await schedulerService.processQueue();
+
+      expect(stats.processed).toBe(1);
+      expect(stats.published).toBe(1);
+      expect(stats.failed).toBe(0);
+      expect(setCredentials).toHaveBeenCalledWith({
+        accessToken: 'test-access-token',
+        refreshToken: 'test-refresh-token',
+        expiryDate: expect.any(Number),
+      });
+      expect(bloggerPublishPost).toHaveBeenCalledWith(
+        expect.objectContaining({
+          blogId: '123456789',
+          title: 'Test Blogger Article',
+          content: 'Test content for blogger',
+          isDraft: false,
+        }),
+        101,
+        2
+      );
+    });
+
+    it('should handle Blogger publish failure and retry', async () => {
+      const mockArticles = [
+        { id: 1, article_id: 101, site_id: 2, status: 'pending', attempts: 0, max_attempts: 3 },
+      ];
+
+      const mockArticle = {
+        id: 101,
+        title: 'Test Blogger Article',
+        content: 'Test content',
+        excerpt: null,
+        slug: 'test-blogger-article',
+        meta_title: null,
+        meta_description: null,
+        featured_image_url: null,
+        site_id: 2,
+      };
+
+      const mockSite = {
+        platform: 'blogger',
+        platform_id: '123456789',
+        api_credentials: {
+          blogger: {
+            oauth_token: 'test-access-token',
+            oauth_refresh_token: 'test-refresh-token',
+            oauth_expires_at: '2025-12-31T23:59:59Z',
+          },
+        },
+      };
+
+      (query as any)
+        .mockResolvedValueOnce({ rows: mockArticles })
+        .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (publishing)
+        .mockResolvedValueOnce({ rows: [mockArticle] }) // getArticleForPublish
+        .mockResolvedValueOnce({ rows: [mockSite] })    // getSitePlatform
+        .mockResolvedValueOnce({ rows: [mockSite] })    // get site credentials
+        .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (pending - retry)
+        .mockResolvedValueOnce({ rows: [] });           // logPublishHistory
+
+      const { publishPost: bloggerPublishPost, setCredentials } = await import('../services/blogger.service');
+      (bloggerPublishPost as any).mockRejectedValueOnce(new Error('Blogger API Error'));
+
+      const stats = await schedulerService.processQueue();
+
+      expect(stats.processed).toBe(1);
+      expect(stats.published).toBe(0);
+      expect(stats.failed).toBe(1);
+      expect(setCredentials).toHaveBeenCalled();
+    });
+
+    it('should fail when Blogger blog ID is not configured', async () => {
+      const mockArticles = [
+        { id: 1, article_id: 101, site_id: 2, status: 'pending', attempts: 0, max_attempts: 3 },
+      ];
+
+      const mockArticle = {
+        id: 101,
+        title: 'Test Blogger Article',
+        content: 'Test content',
+        excerpt: null,
+        slug: 'test-blogger-article',
+        meta_title: null,
+        meta_description: null,
+        featured_image_url: null,
+        site_id: 2,
+      };
+
+      const mockSite = {
+        platform: 'blogger',
+        platform_id: null, // No blog ID configured
+      };
+
+      (query as any)
+        .mockResolvedValueOnce({ rows: mockArticles })
+        .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (publishing)
+        .mockResolvedValueOnce({ rows: [mockArticle] }) // getArticleForPublish
+        .mockResolvedValueOnce({ rows: [mockSite] })    // getSitePlatform
+        .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (pending - retry)
+        .mockResolvedValueOnce({ rows: [] });           // logPublishHistory
+
+      const stats = await schedulerService.processQueue();
+
+      expect(stats.processed).toBe(1);
+      expect(stats.published).toBe(0);
+      expect(stats.failed).toBe(1);
+    });
+
+    it('should log platform type accurately in publish history for Blogger', async () => {
+      const mockArticles = [
+        { id: 1, article_id: 101, site_id: 2, status: 'pending', attempts: 0, max_attempts: 3 },
+      ];
+
+      const mockArticle = {
+        id: 101,
+        title: 'Test Blogger Article',
+        content: 'Test content',
+        excerpt: null,
+        slug: 'test-blogger-article',
+        meta_title: null,
+        meta_description: null,
+        featured_image_url: null,
+        site_id: 2,
+      };
+
+      const mockSite = {
+        platform: 'blogger',
+        platform_id: '123456789',
+        api_credentials: {
+          blogger: {
+            oauth_token: 'test-access-token',
+            oauth_refresh_token: 'test-refresh-token',
+            oauth_expires_at: '2025-12-31T23:59:59Z',
+          },
+        },
+      };
+
+      (query as any)
+        .mockResolvedValueOnce({ rows: mockArticles })  // getDueArticles
+        .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (publishing)
+        .mockResolvedValueOnce({ rows: [mockArticle] }) // getArticleForPublish
+        .mockResolvedValueOnce({ rows: [mockSite] })    // getSitePlatform
+        .mockResolvedValueOnce({ rows: [mockSite] })    // get site credentials
+        .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (published)
+        .mockResolvedValueOnce({ rows: [] })            // updateArticleStatus
+        .mockResolvedValueOnce({ rows: [] });           // logPublishHistory
+
+      const { publishPost: bloggerPublishPost } = await import('../services/blogger.service');
+      (bloggerPublishPost as any).mockResolvedValueOnce({
+        id: 'post-123',
+        blogId: '123456789',
+        title: 'Test Blogger Article',
+        url: 'https://testblog.blogspot.com/2024/01/test-article.html',
+      });
+
+      await schedulerService.processQueue();
+
+      // Check that logPublishHistory was called with platform='blogger'
+      const logCall = (query as any).mock.calls.find((call: any[]) => 
+        call[0].includes('INSERT INTO publish_history')
+      );
+      expect(logCall).toBeDefined();
+      expect(logCall[1]).toContain('blogger');
     });
   });
 });
