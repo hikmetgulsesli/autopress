@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { TrendingUp, Globe, AlertCircle, Loader2 } from 'lucide-react';
+import { TrendingUp, Globe, AlertCircle, Loader2, Search, X } from 'lucide-react';
 import api from '../services/api';
 
 interface Trend {
@@ -40,23 +40,27 @@ const REGIONS = [
 export default function TrendExplorer() {
   const [trends, setTrends] = useState<Trend[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [isSearching, setIsSearching] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchTrends = useCallback(async (region: string) => {
     setLoading(true);
     setError(null);
-    
+    setIsSearching(false);
+    setSearchKeyword('');
+
     try {
       const params = new URLSearchParams();
       if (region !== 'all') {
         params.append('region', region);
       }
       params.append('limit', '50');
-      
+
       const response = await api.get(`/trends?${params.toString()}`);
       const data = response.data;
-      
+
       // Handle both array response and wrapped response
       const trendsData = Array.isArray(data) ? data : data.data || [];
       setTrends(trendsData);
@@ -67,12 +71,69 @@ export default function TrendExplorer() {
     }
   }, []);
 
+  const searchTrends = useCallback(async (keyword: string, region: string) => {
+    if (!keyword.trim()) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setIsSearching(true);
+
+    try {
+      const params = new URLSearchParams();
+      params.append('keyword', keyword.trim());
+      if (region !== 'all') {
+        params.append('region', region);
+      }
+      params.append('limit', '50');
+
+      const response = await api.get(`/trends/search?${params.toString()}`);
+      const data = response.data;
+
+      // Handle wrapped response
+      const trendsData = data.data || [];
+      setTrends(trendsData);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || err.message || 'Arama sırasında bir hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setSearchKeyword('');
+    setIsSearching(false);
+    fetchTrends(selectedRegion);
+  }, [fetchTrends, selectedRegion]);
+
   useEffect(() => {
     fetchTrends(selectedRegion);
   }, [selectedRegion, fetchTrends]);
 
   const handleRegionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedRegion(e.target.value);
+    const newRegion = e.target.value;
+    setSelectedRegion(newRegion);
+    if (isSearching && searchKeyword.trim()) {
+      searchTrends(searchKeyword, newRegion);
+    } else {
+      fetchTrends(newRegion);
+    }
+  };
+
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchKeyword(e.target.value);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchKeyword.trim()) {
+      searchTrends(searchKeyword, selectedRegion);
+    }
+  };
+
+  const handleClearSearch = () => {
+    clearSearch();
   };
 
   const getNewsCount = (trend: Trend): number => {
@@ -99,40 +160,83 @@ export default function TrendExplorer() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Trend Explorer</h1>
-          <p className="text-dark-400 mt-1">Güncel trendleri keşfedin ve analiz edin</p>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Trend Explorer</h1>
+            <p className="text-dark-400 mt-1">Güncel trendleri keşfedin ve analiz edin</p>
+          </div>
+
+          {/* Region Filter */}
+          <div className="flex items-center gap-2">
+            <Globe className="w-5 h-5 text-primary-400" aria-hidden="true" />
+            <label htmlFor="region-filter" className="sr-only">
+              Bölge seçin
+            </label>
+            <select
+              id="region-filter"
+              value={selectedRegion}
+              onChange={handleRegionChange}
+              disabled={loading}
+              className="input min-w-[180px] cursor-pointer"
+              aria-label="Bölge filtresi"
+            >
+              {REGIONS.map((region) => (
+                <option key={region.value} value={region.value}>
+                  {region.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        
-        {/* Region Filter */}
-        <div className="flex items-center gap-2">
-          <Globe className="w-5 h-5 text-primary-400" aria-hidden="true" />
-          <label htmlFor="region-filter" className="sr-only">
-            Bölge seçin
-          </label>
-          <select
-            id="region-filter"
-            value={selectedRegion}
-            onChange={handleRegionChange}
-            disabled={loading}
-            className="input min-w-[180px] cursor-pointer"
-            aria-label="Bölge filtresi"
+
+        {/* Search Bar */}
+        <form onSubmit={handleSearchSubmit} className="flex gap-2">
+          <div className="relative flex-1 max-w-md">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={searchKeyword}
+              onChange={handleSearchInputChange}
+              placeholder="Trend ara..."
+              className="input w-full pl-10 pr-10"
+              aria-label="Trend ara"
+              disabled={loading}
+            />
+            {searchKeyword && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-dark-700 transition-colors"
+                aria-label="Aramayı temizle"
+              >
+                <X className="w-4 h-4 text-dark-400" />
+              </button>
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={loading || !searchKeyword.trim()}
+            className="btn btn-primary flex items-center gap-2"
           >
-            {REGIONS.map((region) => (
-              <option key={region.value} value={region.value}>
-                {region.label}
-              </option>
-            ))}
-          </select>
-        </div>
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Search className="w-4 h-4" aria-hidden="true" />
+            )}
+            Ara
+          </button>
+        </form>
       </div>
 
       {/* Loading State */}
       {loading && (
         <div className="card p-12 text-center">
-          <Loader2 
-            className="w-10 h-10 text-primary-400 mx-auto mb-4 animate-spin" 
+          <Loader2
+            className="w-10 h-10 text-primary-400 mx-auto mb-4 animate-spin"
             aria-hidden="true"
           />
           <p className="text-dark-400">Trendler yükleniyor...</p>
@@ -141,7 +245,7 @@ export default function TrendExplorer() {
 
       {/* Error State */}
       {!loading && error && (
-        <div 
+        <div
           className="card p-8 text-center border-error/30"
           role="alert"
           aria-live="assertive"
@@ -152,7 +256,7 @@ export default function TrendExplorer() {
           <h3 className="text-lg font-medium text-white mb-2">Bir hata oluştu</h3>
           <p className="text-dark-400 mb-4">{error}</p>
           <button
-            onClick={() => fetchTrends(selectedRegion)}
+            onClick={() => isSearching ? searchTrends(searchKeyword, selectedRegion) : fetchTrends(selectedRegion)}
             className="btn btn-primary"
           >
             Tekrar Dene
@@ -166,12 +270,24 @@ export default function TrendExplorer() {
           <div className="w-16 h-16 bg-primary-400/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <TrendingUp className="w-8 h-8 text-primary-400" aria-hidden="true" />
           </div>
-          <h3 className="text-lg font-medium text-white mb-2">Henüz trend yok</h3>
+          <h3 className="text-lg font-medium text-white mb-2">
+            {isSearching ? 'Arama sonucu bulunamadı' : 'Henüz trend yok'}
+          </h3>
           <p className="text-dark-400">
-            {selectedRegion === 'all' 
-              ? 'Şu anda görüntülenecek trend bulunmuyor.' 
-              : 'Seçili bölge için henüz trend verisi bulunmuyor.'}
+            {isSearching
+              ? `"${searchKeyword}" için trend bulunamadı. Farklı bir anahtar kelime deneyin.`
+              : selectedRegion === 'all'
+                ? 'Şu anda görüntülenecek trend bulunmuyor.'
+                : 'Seçili bölge için henüz trend verisi bulunmuyor.'}
           </p>
+          {isSearching && (
+            <button
+              onClick={handleClearSearch}
+              className="btn btn-secondary mt-4"
+            >
+              Tüm Trendleri Göster
+            </button>
+          )}
         </div>
       )}
 
@@ -179,16 +295,24 @@ export default function TrendExplorer() {
       {!loading && !error && trends.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between text-sm text-dark-400 px-1">
-            <span>{trends.length} trend bulundu</span>
+            <span>
+              {isSearching && (
+                <span className="inline-flex items-center gap-2">
+                  <span className="text-primary-400">"{searchKeyword}"</span>
+                  <span>için</span>
+                </span>
+              )}
+              {trends.length} trend bulundu
+            </span>
             <span className="hidden sm:inline">Skor ve haber sayısına göre sıralandı</span>
           </div>
-          
+
           <ul className="space-y-3" role="list">
             {trends.map((trend, index) => {
               const newsCount = getNewsCount(trend);
               const scoreColor = getScoreColor(trend.score);
               const scoreBgColor = getScoreBgColor(trend.score);
-              
+
               return (
                 <li
                   key={trend.id}
@@ -200,7 +324,7 @@ export default function TrendExplorer() {
                     <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-sm font-medium text-dark-400">
                       {index + 1}
                     </div>
-                    
+
                     {/* Trend Info */}
                     <div className="flex-1 min-w-0">
                       <h3 className="text-white font-medium truncate" title={trend.topic}>
@@ -215,7 +339,7 @@ export default function TrendExplorer() {
                         <span>Kaynak: {trend.source}</span>
                       </div>
                     </div>
-                    
+
                     {/* Stats */}
                     <div className="flex items-center gap-3 sm:gap-6">
                       {/* News Count */}
@@ -225,7 +349,7 @@ export default function TrendExplorer() {
                           {newsCount > 0 ? newsCount.toLocaleString('tr-TR') : '-'}
                         </p>
                       </div>
-                      
+
                       {/* Score */}
                       <div className={`flex-shrink-0 px-3 py-1.5 rounded-lg ${scoreBgColor}`}>
                         <span className={`text-sm font-semibold tabular-nums ${scoreColor}`}>
