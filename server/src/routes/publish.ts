@@ -8,6 +8,9 @@ import {
   articleIdParamSchema,
   publishNowSchema,
 } from '../middleware/schemas';
+import * as wordpressService from '../services/wordpress.service';
+import * as bloggerService from '../services/blogger.service';
+import { logger } from '../utils/logger';
 
 const router = Router();
 router.use(authenticate);
@@ -167,6 +170,18 @@ router.patch('/schedule/:articleId', validateParams(articleIdParamSchema), valid
   }
 });
 
+// Get site credentials from database
+const getSiteCredentials = async (siteId: number): Promise<{
+  platform: string;
+  api_credentials: Record<string, unknown>;
+} | null> => {
+  const result = await query(
+    'SELECT platform, api_credentials FROM sites WHERE id = $1',
+    [siteId]
+  );
+  return result.rows[0] || null;
+};
+
 // Publish immediately
 router.post('/publish-now', validateBody(publishNowSchema), async (req: AuthRequest, res: Response) => {
   const { articleId, siteId, platform } = req.body;
@@ -190,40 +205,180 @@ router.post('/publish-now', validateBody(publishNowSchema), async (req: AuthRequ
 
     const article = articleResult.rows[0];
 
-    // TODO: Integrate with actual WordPress/Blogger API
-    // For now, simulate publishing
+    // Get site credentials
+    const site = await getSiteCredentials(siteId);
+    if (!site) {
+      res.status(404).json({
+        error: {
+          code: 'SITE_NOT_FOUND',
+          message: 'Site bulunamadı'
+        }
+      });
+      return;
+    }
+
+    // Validate platform matches
+    if (site.platform !== platform) {
+      res.status(400).json({
+        error: {
+          code: 'PLATFORM_MISMATCH',
+          message: `Site platformu (${site.platform}) istenen platform (${platform}) ile eşleşmiyor`
+        }
+      });
+      return;
+    }
+
     const now = new Date().toISOString();
-    
-    // Update article status
-    await query(
-      `UPDATE articles 
-       SET status = 'published', 
-           site_id = $1,
-           published_at = $2,
-           published_url = $3,
-           updated_at = NOW()
-       WHERE id = $4`,
-      [siteId, now, `https://example.com/${article.slug}`, articleId]
-    );
+    let publishResult: {
+      success: boolean;
+      platformPostId: string;
+      publishedUrl: string;
+      error?: string;
+    };
 
-    // Add to publish history
-    await query(
-      `INSERT INTO publish_history 
-       (article_id, site_id, platform, platform_post_id, status, published_at)
-       VALUES ($1, $2, $3, $4, 'success', $5)`,
-      [articleId, siteId, platform, `post_${Date.now()}`, now]
-    );
+    try {
+      if (platform === 'wordpress') {
+        // Set up WordPress credentials from site
+        const creds = site.api_credentials as {
+          siteUrl?: string;
+          username?: string;
+          applicationPassword?: string;
+        };
 
-    res.json({ 
-      success: true,
-      message: 'Makale başarıyla yayınlandı',
-      data: {
-        articleId,
-        publishedUrl: `https://example.com/${article.slug}`
+        if (!creds?.siteUrl || !creds?.username || !creds?.applicationPassword) {
+          throw new Error('WordPress API bilgileri eksik. Site ayarlarından API bilgilerini girin.');
+        }
+
+        // Set environment variables for this request
+        process.env.WORDPRESS_SITE_URL = creds.siteUrl;
+        process.env.WORDPRESS_USERNAME = creds.username;
+        process.env.WORDPRESS_APP_PASSWORD = creds.applicationPassword;
+
+        // Publish to WordPress
+        const wpResult = await wordpressService.publishPost(articleId, {
+          title: article.title,
+          content: article.content,
+          excerpt: article.excerpt || undefined,
+          slug: article.slug || undefined,
+          status: 'publish',
+        });
+
+        publishResult = {
+          success: true,
+          platformPostId: wpResult.wordpressId.toString(),
+          publishedUrl: wpResult.wordpressUrl,
+        };
+      } else if (platform === 'blogger') {
+        // Set up Blogger credentials from site
+        const creds = site.api_credentials as {
+          blogId?: string;
+          accessToken?: string;
+          refreshToken?: string;
+          expiryDate?: number;
+        };
+
+        if (!creds?.blogId) {
+          throw new Error('Blogger Blog ID eksik. Site ayarlarından Blog ID girin.');
+        }
+
+        if (!creds?.accessToken) {
+          throw new Error('Blogger yetkilendirme bilgileri eksik. Blogger ile yeniden bağlanın.');
+        }
+
+        // Set credentials on Blogger service
+        bloggerService.setCredentials({
+          accessToken: creds.accessToken,
+          refreshToken: creds.refreshToken || '',
+          expiryDate: creds.expiryDate || Date.now() + 3600 * 1000,
+        });
+
+        // Publish to Blogger
+        const bloggerResult = await bloggerService.publishPost(
+          {
+            blogId: creds.blogId,
+            title: article.title,
+            content: article.content,
+            labels: article.tags || [],
+            isDraft: false,
+          },
+          articleId,
+          siteId
+        );
+
+        publishResult = {
+          success: true,
+          platformPostId: bloggerResult.id,
+          publishedUrl: bloggerResult.url,
+        };
+      } else {
+        throw new Error(`Desteklenmeyen platform: ${platform}`);
+      }
+
+      // Update article status with real published URL
+      await query(
+        `UPDATE articles 
+         SET status = 'published', 
+             site_id = $1,
+             published_at = $2,
+             published_url = $3,
+             updated_at = NOW()
+         WHERE id = $4`,
+        [siteId, now, publishResult.publishedUrl, articleId]
+      );
+
+      // Add to publish history with real platform data
+      await query(
+        `INSERT INTO publish_history 
+         (article_id, site_id, platform, platform_post_id, status, published_at)
+         VALUES ($1, $2, $3, $4, 'success', $5)`,
+        [articleId, siteId, platform, publishResult.platformPostId, now]
+      );
+
+      logger.info(`Article ${articleId} published successfully to ${platform}: ${publishResult.publishedUrl}`);
+
+      res.json({ 
+        success: true,
+        message: 'Makale başarıyla yayınlandı',
+        data: {
+          articleId,
+          platform,
+          platformPostId: publishResult.platformPostId,
+          publishedUrl: publishResult.publishedUrl,
+          publishedAt: now,
+        }
+      });
+    } catch (publishError: any) {
+      // Log failed publish to history
+      const errorMessage = publishError.message || 'Yayınlama hatası';
+      
+      await query(
+        `INSERT INTO publish_history 
+         (article_id, site_id, platform, platform_post_id, status, error_message, published_at)
+         VALUES ($1, $2, $3, $4, 'failed', $5, $6)`,
+        [articleId, siteId, platform, '', errorMessage, now]
+      );
+
+      logger.error(`Failed to publish article ${articleId} to ${platform}:`, publishError);
+
+      // Return appropriate error response
+      const errorCode = publishError.code || 'PUBLISH_ERROR';
+      const statusCode = publishError.statusCode || 500;
+
+      res.status(statusCode).json({
+        error: {
+          code: errorCode,
+          message: errorMessage,
+        }
+      });
+    }
+  } catch (err: any) {
+    logger.error('Unexpected error in publish-now:', err);
+    res.status(500).json({ 
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err.message || 'Beklenmeyen bir hata oluştu'
       }
     });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
   }
 });
 
