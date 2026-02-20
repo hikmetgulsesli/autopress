@@ -201,3 +201,15 @@ export interface NotificationSettings {
   notifyOnPublishFailed: boolean;
   notifyOnTrendingTopic: boolean;
 }
+
+export interface InterestDataPoint {
+  date: string;
+  value: number;
+  formattedValue: string;
+}
+
+export interface InterestOverTimeResult {
+  keyword: string;
+  data: InterestDataPoint[];
+  average: number;
+}

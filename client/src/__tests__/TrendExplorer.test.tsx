@@ -47,6 +47,20 @@ describe('TrendExplorer', () => {
     },
   ];
 
+  const mockInterestData = {
+    keyword: 'Yapay Zeka',
+    data: [
+      { date: '2024-01-08', value: 45, formattedValue: '45' },
+      { date: '2024-01-09', value: 52, formattedValue: '52' },
+      { date: '2024-01-10', value: 48, formattedValue: '48' },
+      { date: '2024-01-11', value: 65, formattedValue: '65' },
+      { date: '2024-01-12', value: 78, formattedValue: '78' },
+      { date: '2024-01-13', value: 85, formattedValue: '85' },
+      { date: '2024-01-14', value: 92, formattedValue: '92' },
+    ],
+    average: 66,
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -215,5 +229,330 @@ describe('TrendExplorer', () => {
     expect(regionSelect).toContainElement(screen.getByText('Tüm Bölgeler'));
     expect(regionSelect).toContainElement(screen.getByText('Türkiye'));
     expect(regionSelect).toContainElement(screen.getByText('ABD'));
+  });
+
+  // New tests for Interest History Chart feature
+  describe('Interest History Chart', () => {
+    it('shows detail panel when a trend is clicked', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: mockInterestData });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on the first trend
+      const trendItem = screen.getByTestId('trend-item-1');
+      fireEvent.click(trendItem);
+
+      // Detail panel should appear
+      await waitFor(() => {
+        expect(screen.getByTestId('trend-detail-panel')).toBeInTheDocument();
+      });
+
+      // Check detail panel content
+      expect(screen.getByTestId('detail-title')).toHaveTextContent('Yapay Zeka');
+    });
+
+    it('fetches interest over time data when trend is selected', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: mockInterestData });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on the first trend
+      const trendItem = screen.getByTestId('trend-item-1');
+      fireEvent.click(trendItem);
+
+      // Should call the interest-over-time endpoint
+      await waitFor(() => {
+        expect(mockApi.get).toHaveBeenCalledWith(
+          expect.stringContaining('/trends/interest-over-time')
+        );
+      });
+    });
+
+    it('displays time range options (7/30/90 days)', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: mockInterestData });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on the first trend
+      const trendItem = screen.getByTestId('trend-item-1');
+      fireEvent.click(trendItem);
+
+      // Check time range buttons
+      await waitFor(() => {
+        expect(screen.getByTestId('time-range-7')).toBeInTheDocument();
+        expect(screen.getByTestId('time-range-30')).toBeInTheDocument();
+        expect(screen.getByTestId('time-range-90')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Son 7 Gün')).toBeInTheDocument();
+      expect(screen.getByText('Son 30 Gün')).toBeInTheDocument();
+      expect(screen.getByText('Son 90 Gün')).toBeInTheDocument();
+    });
+
+    it('changes time range when clicked', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: mockInterestData });
+      mockApi.get.mockResolvedValueOnce({ data: { ...mockInterestData, data: [] } });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on the first trend
+      const trendItem = screen.getByTestId('trend-item-1');
+      fireEvent.click(trendItem);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('time-range-7')).toBeInTheDocument();
+      });
+
+      // Click on 7 days button
+      fireEvent.click(screen.getByTestId('time-range-7'));
+
+      // Should fetch new data
+      await waitFor(() => {
+        expect(mockApi.get).toHaveBeenCalledTimes(3);
+      });
+    });
+
+    it('closes detail panel when close button is clicked', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: mockInterestData });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on the first trend
+      const trendItem = screen.getByTestId('trend-item-1');
+      fireEvent.click(trendItem);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trend-detail-panel')).toBeInTheDocument();
+      });
+
+      // Click close button
+      const closeBtn = screen.getByTestId('close-detail-btn');
+      fireEvent.click(closeBtn);
+
+      // Detail panel should be removed
+      await waitFor(() => {
+        expect(screen.queryByTestId('trend-detail-panel')).not.toBeInTheDocument();
+      });
+    });
+
+    it('shows chart section when trend is selected', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: mockInterestData });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on the first trend
+      const trendItem = screen.getByTestId('trend-item-1');
+      fireEvent.click(trendItem);
+
+      // Wait for detail panel
+      await waitFor(() => {
+        expect(screen.getByTestId('trend-detail-panel')).toBeInTheDocument();
+      });
+
+      // Check that the chart section is rendered
+      expect(screen.getByText('İlgi Geçmişi')).toBeInTheDocument();
+    });
+
+    it('shows chart loading state', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      // Delay the interest data response
+      mockApi.get.mockImplementationOnce(() => new Promise(() => {}));
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on the first trend
+      const trendItem = screen.getByTestId('trend-item-1');
+      fireEvent.click(trendItem);
+
+      // Should show chart loading
+      await waitFor(() => {
+        expect(screen.getByTestId('chart-loading')).toBeInTheDocument();
+      });
+    });
+
+    it('shows chart error state when API fails', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockRejectedValueOnce(new Error('Chart data error'));
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on the first trend
+      const trendItem = screen.getByTestId('trend-item-1');
+      fireEvent.click(trendItem);
+
+      // Should show chart error
+      await waitFor(() => {
+        expect(screen.getByTestId('chart-error')).toBeInTheDocument();
+      });
+    });
+
+    it('shows chart empty state when no data', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: { keyword: 'Test', data: [], average: 0 } });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on the first trend
+      const trendItem = screen.getByTestId('trend-item-1');
+      fireEvent.click(trendItem);
+
+      // Should show chart empty state
+      await waitFor(() => {
+        expect(screen.getByTestId('chart-empty')).toBeInTheDocument();
+      });
+    });
+
+    it('renders interest chart when data is available', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: mockInterestData });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on the first trend
+      const trendItem = screen.getByTestId('trend-item-1');
+      fireEvent.click(trendItem);
+
+      // Wait for detail panel
+      await waitFor(() => {
+        expect(screen.getByTestId('trend-detail-panel')).toBeInTheDocument();
+      });
+
+      // Check that the chart section is rendered
+      expect(screen.getByText('İlgi Geçmişi')).toBeInTheDocument();
+    });
+
+    it('highlights selected trend', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: mockInterestData });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on the first trend
+      const trendItem = screen.getByTestId('trend-item-1');
+      fireEvent.click(trendItem);
+
+      // Selected trend should have ring class
+      await waitFor(() => {
+        expect(trendItem).toHaveClass('ring-2');
+      });
+    });
+
+    it('supports keyboard navigation for trend selection', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: mockInterestData });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Press Enter on the first trend
+      const trendItem = screen.getByTestId('trend-item-1');
+      fireEvent.keyDown(trendItem, { key: 'Enter' });
+
+      // Detail panel should appear
+      await waitFor(() => {
+        expect(screen.getByTestId('trend-detail-panel')).toBeInTheDocument();
+      });
+    });
   });
 });
