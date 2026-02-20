@@ -19,6 +19,7 @@ import schedulerRoutes from './routes/scheduler';
 import imagesRoutes from './routes/images';
 import rssRoutes from './routes/rss';
 import bulkSeoRoutes from './routes/bulkseo';
+import securityRoutes from './routes/security';
 import { startScheduler, getSchedulerStatus } from './services/scheduler.service';
 
 dotenv.config();
@@ -48,6 +49,7 @@ app.use('/api/scheduler', schedulerRoutes);
 app.use('/api/images', imagesRoutes);
 app.use('/api/rss', rssRoutes);
 app.use('/api/bulk-seo', bulkSeoRoutes);
+app.use('/api/security', securityRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
