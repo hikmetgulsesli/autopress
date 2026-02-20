@@ -71,4 +71,136 @@ router.post('/logout', authenticate, async (req: AuthRequest, res: Response) => 
   }
 });
 
+// Update user profile (name only)
+router.put('/profile', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { name } = req.body;
+    const userId = req.user!.id;
+
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Ad alanı gereklidir',
+        },
+      });
+    }
+
+    if (name.length > 100) {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Ad 100 karakterden uzun olamaz',
+        },
+      });
+    }
+
+    const result = await query(
+      'UPDATE users SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, email, name, role, created_at, updated_at',
+      [name.trim(), userId]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Kullanıcı bulunamadı',
+        },
+      });
+    }
+
+    res.json({
+      data: result.rows[0],
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err.message,
+      },
+    });
+  }
+});
+
+// Change password
+router.post('/change-password', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user!.id;
+
+    // Validation
+    if (!currentPassword || typeof currentPassword !== 'string') {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Mevcut şifre gereklidir',
+        },
+      });
+    }
+
+    if (!newPassword || typeof newPassword !== 'string') {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Yeni şifre gereklidir',
+        },
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Yeni şifre en az 6 karakter olmalıdır',
+        },
+      });
+    }
+
+    // Get user with password hash
+    const userResult = await query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+    
+    if (!userResult.rows[0]) {
+      return res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Kullanıcı bulunamadı',
+        },
+      });
+    }
+
+    // Verify current password
+    const valid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+    if (!valid) {
+      return res.status(401).json({
+        error: {
+          code: 'INVALID_CREDENTIALS',
+          message: 'Mevcut şifre yanlış',
+        },
+      });
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await query(
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [newPasswordHash, userId]
+    );
+
+    res.json({
+      data: {
+        message: 'Şifre başarıyla değiştirildi',
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err.message,
+      },
+    });
+  }
+});
+
 export default router;
