@@ -54,6 +54,20 @@ export interface Site {
   niche: string;
   is_active: boolean;
   adsense_status?: 'approved' | 'pending' | 'rejected' | 'not_configured';
+  api_credentials?: {
+    wordpress?: {
+      site_url: string;
+      username: string;
+      app_password: string;
+    };
+    blogger?: {
+      client_id: string;
+      client_secret: string;
+      oauth_token?: string;
+      oauth_refresh_token?: string;
+      oauth_expires_at?: string;
+    };
+  };
 }
 
 export interface PublishHistory {
@@ -167,4 +181,30 @@ export interface LockedAccount {
   email: string;
   failed_login_attempts: number;
   locked_until: string;
+}
+
+export interface UserProfile {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdateProfileRequest {
+  name: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface NotificationSettings {
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  notifyOnPublishSuccess: boolean;
+  notifyOnPublishFailed: boolean;
+  notifyOnTrendingTopic: boolean;
 }
