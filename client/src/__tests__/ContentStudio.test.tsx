@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import ContentStudio from '../pages/ContentStudio';
 import api from '../services/api';
 
@@ -27,11 +26,19 @@ describe('ContentStudio - Article Loading from URL Param', () => {
 
   const renderWithRouter = (initialEntry: string) => {
     return render(
-      <BrowserRouter initialEntries={[initialEntry]}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <ContentStudio />
-      </BrowserRouter>
+      </MemoryRouter>
     );
   };
+
+  it('should not fetch article when no article ID in URL', async () => {
+    renderWithRouter('/');
+
+    await waitFor(() => {
+      expect(mockApi.get).not.toHaveBeenCalled();
+    });
+  });
 
   it('should load article when article ID is present in URL', async () => {
     const mockArticle = {
@@ -92,14 +99,6 @@ describe('ContentStudio - Article Loading from URL Param', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Sunucu hatası')).toBeInTheDocument();
-    });
-  });
-
-  it('should not fetch article when no article ID in URL', async () => {
-    renderWithRouter('/');
-
-    await waitFor(() => {
-      expect(mockApi.get).not.toHaveBeenCalled();
     });
   });
 });
