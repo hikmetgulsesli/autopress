@@ -1,36 +1,20 @@
 import { useEffect, useState } from 'react';
-import { useSiteStore, Site } from '../store/siteStore';
+import { useSiteStore, Site, ApiCredentials } from '../store/siteStore';
 import { Plus, Globe, Pencil, Trash2, X, Loader2, ExternalLink, Eye, EyeOff } from 'lucide-react';
 
-// API Credentials interfaces
-export interface WordPressCredentials {
-  siteUrl: string;
-  username: string;
-  appPassword: string;
-}
-
-export interface BloggerCredentials {
-  clientId: string;
-  clientSecret: string;
-  redirectUri?: string;
-}
-
-export interface ApiCredentials {
-  wordpress?: WordPressCredentials;
-  blogger?: BloggerCredentials;
+interface SiteFormData {
+  name: string;
+  domain: string;
+  platform: 'blogger' | 'wordpress';
+  platform_id: string;
+  language: string;
+  niche: string;
+  adsense_status: string;
+  api_credentials: ApiCredentials;
 }
 
 function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () => void; onSave: (data: Partial<Site>) => Promise<void> }) {
-  const [form, setForm] = useState<{
-    name: string;
-    domain: string;
-    platform: 'blogger' | 'wordpress';
-    platform_id: string;
-    language: string;
-    niche: string;
-    adsense_status: string;
-    api_credentials: ApiCredentials;
-  }>({
+  const [form, setForm] = useState<SiteFormData>({
     name: site?.name || '',
     domain: site?.domain || '',
     platform: site?.platform || 'blogger',
@@ -47,29 +31,45 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    try { await onSave(form); onClose(); } catch {} finally { setSaving(false); }
+    try { 
+      await onSave({
+        name: form.name,
+        domain: form.domain,
+        platform: form.platform,
+        platform_id: form.platform_id,
+        language: form.language,
+        niche: form.niche,
+        adsense_status: form.adsense_status,
+        api_credentials: form.api_credentials,
+      }); 
+      onClose(); 
+    } catch {} finally { setSaving(false); }
   };
 
-  const updateWordPressCreds = (field: keyof WordPressCredentials, value: string) => {
+  const updateWordPressCreds = (field: 'siteUrl' | 'username' | 'appPassword', value: string) => {
     setForm(prev => ({
       ...prev,
       api_credentials: {
         ...prev.api_credentials,
         wordpress: {
-          ...prev.api_credentials?.wordpress,
+          siteUrl: prev.api_credentials?.wordpress?.siteUrl || '',
+          username: prev.api_credentials?.wordpress?.username || '',
+          appPassword: prev.api_credentials?.wordpress?.appPassword || '',
           [field]: value,
         },
       },
     }));
   };
 
-  const updateBloggerCreds = (field: keyof BloggerCredentials, value: string) => {
+  const updateBloggerCreds = (field: 'clientId' | 'clientSecret' | 'redirectUri', value: string) => {
     setForm(prev => ({
       ...prev,
       api_credentials: {
         ...prev.api_credentials,
         blogger: {
-          ...prev.api_credentials?.blogger,
+          clientId: prev.api_credentials?.blogger?.clientId || '',
+          clientSecret: prev.api_credentials?.blogger?.clientSecret || '',
+          redirectUri: prev.api_credentials?.blogger?.redirectUri || '',
           [field]: value,
         },
       },
