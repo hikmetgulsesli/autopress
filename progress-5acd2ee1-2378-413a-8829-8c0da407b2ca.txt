@@ -6,3 +6,22 @@ US-001: Design System & CSS Custom Properties - COMPLETED
 - PR: https://github.com/hikmetgulsesli/autopress/pull/1
 - Implemented: Design tokens with CSS custom properties
 - Completed: Fri Feb 20 11:48:19 +03 2026
+
+---
+US-006: Blogger API Integration Service - COMPLETED
+- Branch: US-006
+- PR: https://github.com/hikmetgulsesli/autopress/pull/18
+- Implemented: Google Blogger API integration with OAuth 2.0, token management, blog listing, post/page publishing
+- Tests: 32 tests passing for blogger service
+- Completed: Fri Feb 20 13:57:00 +03 2026
+
+### Codebase Patterns
+
+#### Blogger Service Pattern
+- Location: server/src/services/blogger.service.ts
+- OAuth2 client management with lazy initialization from env vars
+- Typed error classes with error codes (BloggerError)
+- Database logging for publish history (non-blocking, errors don't break flow)
+- API error handling with specific HTTP status code checks (401, 403, 404, 400)
+- Exported functions: listBlogs(), publishPost(), publishPage(), getBlog(), updatePost(), deletePost(), listPosts()
+- Helper functions: initializeOAuth2Client(), getAuthUrl(), exchangeCodeForTokens(), refreshAccessToken(), setCredentials()
