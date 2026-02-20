@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { query } from '../db/connection';
 import { logger } from '../utils/logger';
 import * as wordpressService from './wordpress.service';
+import * as searchConsoleService from './searchconsole.service';
 
 // Types
 export type PublishStatus = 'pending' | 'publishing' | 'published' | 'failed' | 'cancelled';
@@ -89,14 +90,16 @@ const logPublishHistory = async (
   status: string,
   platformPostId?: string,
   errorMessage?: string,
-  attemptNumber: number = 1
+  attemptNumber: number = 1,
+  indexingSubmitted?: boolean,
+  indexingError?: string
 ): Promise<void> => {
   try {
     await query(
       `INSERT INTO publish_history 
-       (article_id, site_id, queue_id, platform, platform_post_id, status, error_message, attempt_number, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-      [articleId, siteId, queueId, platform, platformPostId || null, status, errorMessage || null, attemptNumber]
+       (article_id, site_id, queue_id, platform, platform_post_id, status, error_message, attempt_number, published_at, indexing_submitted, indexing_error)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9, $10)`,
+      [articleId, siteId, queueId, platform, platformPostId || null, status, errorMessage || null, attemptNumber, indexingSubmitted || false, indexingError || null]
     );
   } catch (err) {
     logger.error('Failed to log publish history:', err);
@@ -259,6 +262,23 @@ export const publishArticle = async (queueItem: PublishQueueItem): Promise<void>
     // Update article status
     await updateArticleStatus(article_id, 'published', result.wordpressUrl);
 
+    // Auto-submit to Google Search Console for indexing
+    let indexingSubmitted = false;
+    let indexingError: string | undefined;
+    try {
+      if (result.wordpressUrl) {
+        const indexResult = await searchConsoleService.autoSubmitAfterPublish(result.wordpressUrl, article_id);
+        indexingSubmitted = indexResult.success;
+        if (!indexResult.success) {
+          indexingError = indexResult.message;
+        }
+      }
+    } catch (indexErr) {
+      logger.warn(`Auto-indexing failed for article ${article_id}:`, indexErr);
+      indexingError = indexErr instanceof Error ? indexErr.message : 'Unknown indexing error';
+      // Don't fail the publish if indexing fails
+    }
+
     // Log success
     await logPublishHistory(
       article_id,
@@ -268,10 +288,12 @@ export const publishArticle = async (queueItem: PublishQueueItem): Promise<void>
       'published',
       result.wordpressId.toString(),
       undefined,
-      attempts + 1
+      attempts + 1,
+      indexingSubmitted,
+      indexingError
     );
 
-    logger.info(`Successfully published article ${article_id} to WordPress (ID: ${result.wordpressId})`);
+    logger.info(`Successfully published article ${article_id} to WordPress (ID: ${result.wordpressId})${indexingSubmitted ? ' and submitted for indexing' : ''}`);
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
     const newAttempts = attempts + 1;
