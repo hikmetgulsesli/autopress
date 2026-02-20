@@ -1,5 +1,16 @@
 import rateLimit from 'express-rate-limit';
 import type { Request, Response } from 'express';
+import { logSecurityEvent } from '../services/audit.service';
+
+// Helper to get client IP
+function getClientIp(req: Request): string {
+  return (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+}
+
+// Helper to get user agent
+function getUserAgent(req: Request): string {
+  return req.headers['user-agent'] || 'unknown';
+}
 
 // Memory store for rate limiting (in production, consider Redis)
 export const authLimiter = rateLimit({
@@ -13,7 +24,18 @@ export const authLimiter = rateLimit({
       message: 'Too many authentication attempts. Please try again later.',
     },
   },
-  handler: (_req: Request, res: Response) => {
+  handler: (req: Request, res: Response) => {
+    // Log rate limit hit
+    logSecurityEvent({
+      eventType: 'RATE_LIMIT_HIT',
+      userId: null,
+      ipAddress: getClientIp(req),
+      userAgent: getUserAgent(req),
+      details: { endpoint: req.path, limit: 5, window: '15m' },
+    }).catch(() => {
+      // Silently fail - don't block the response
+    });
+
     res.set('Retry-After', String(Math.ceil(15 * 60)));
     res.status(429).json({
       error: {
@@ -35,7 +57,18 @@ export const apiLimiter = rateLimit({
       message: 'Too many API requests. Please try again later.',
     },
   },
-  handler: (_req: Request, res: Response) => {
+  handler: (req: Request, res: Response) => {
+    // Log rate limit hit
+    logSecurityEvent({
+      eventType: 'RATE_LIMIT_HIT',
+      userId: null,
+      ipAddress: getClientIp(req),
+      userAgent: getUserAgent(req),
+      details: { endpoint: req.path, limit: 100, window: '15m' },
+    }).catch(() => {
+      // Silently fail - don't block the response
+    });
+
     res.set('Retry-After', String(Math.ceil(15 * 60)));
     res.status(429).json({
       error: {
@@ -65,7 +98,18 @@ export const createRateLimiter = (options: {
       },
     },
     skipSuccessfulRequests: options.skipSuccessfulRequests || false,
-    handler: (_req: Request, res: Response) => {
+    handler: (req: Request, res: Response) => {
+      // Log rate limit hit
+      logSecurityEvent({
+        eventType: 'RATE_LIMIT_HIT',
+        userId: null,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+        details: { endpoint: req.path, limit: options.max || 100, window: `${(options.windowMs || 15 * 60 * 1000) / 60000}m` },
+      }).catch(() => {
+        // Silently fail - don't block the response
+      });
+
       res.set('Retry-After', String(Math.ceil(15 * 60)));
       res.status(429).json({
         error: {

@@ -21,3 +21,6 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
     return res.status(401).json({ error: 'Geçersiz token' });
   }
 }
+
+// Alias for authenticate - used by security routes
+export const requireAuth = authenticate;

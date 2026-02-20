@@ -87,7 +87,7 @@ router.get('/locked-accounts', requireAuth, async (req, res, next) => {
  */
 router.post('/unlock-account/:userId', requireAuth, async (req, res, next) => {
   try {
-    const userId = parseInt(req.params.userId);
+    const userId = parseInt(req.params.userId as string);
 
     // TODO: Add admin role check here when roles are implemented
 
