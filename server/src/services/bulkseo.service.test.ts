@@ -27,12 +27,13 @@ vi.mock('../db/connection', () => ({
 const mockedQuery = vi.mocked(query);
 
 describe('BulkSEOService', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('analyzeArticleSEO', () => {
-    it('should detect missing meta description', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockedQuery.mockResolvedValue({ rows: [], rowCount: 1 } as any);
+    });
+
+    it('should detect missing meta description', async () => {
       const article = {
         id: 1,
         title: 'Test Article Title',
@@ -44,7 +45,7 @@ describe('BulkSEOService', () => {
         word_count: 500,
       };
 
-      const result = analyzeArticleSEO(article);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({
@@ -55,7 +56,7 @@ describe('BulkSEOService', () => {
       );
     });
 
-    it('should detect short title', () => {
+    it('should detect short title', async () => {
       const article = {
         id: 1,
         title: 'Short',
@@ -67,7 +68,7 @@ describe('BulkSEOService', () => {
         word_count: 500,
       };
 
-      const result = analyzeArticleSEO(article);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({
@@ -78,7 +79,7 @@ describe('BulkSEOService', () => {
       );
     });
 
-    it('should detect missing H1 heading', () => {
+    it('should detect missing H1 heading', async () => {
       const article = {
         id: 1,
         title: 'Test Article Title That Is Long Enough',
@@ -90,7 +91,7 @@ describe('BulkSEOService', () => {
         word_count: 500,
       };
 
-      const result = analyzeArticleSEO(article);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({
@@ -101,7 +102,7 @@ describe('BulkSEOService', () => {
       );
     });
 
-    it('should detect short content', () => {
+    it('should detect short content', async () => {
       const article = {
         id: 1,
         title: 'Test Article Title That Is Long Enough',
@@ -113,7 +114,7 @@ describe('BulkSEOService', () => {
         word_count: 100,
       };
 
-      const result = analyzeArticleSEO(article);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({
@@ -124,7 +125,7 @@ describe('BulkSEOService', () => {
       );
     });
 
-    it('should pass for well-optimized article', () => {
+    it('should pass for well-optimized article', async () => {
       const article = {
         id: 1,
         title: 'Complete Guide to SEO Best Practices',
@@ -136,9 +137,29 @@ describe('BulkSEOService', () => {
         word_count: 1000,
       };
 
-      const result = analyzeArticleSEO(article);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues.filter(i => i.type === 'error')).toHaveLength(0);
+    });
+
+    it('should save seo_score to database', async () => {
+      const article = {
+        id: 1,
+        title: 'Test Article Title That Is Long Enough',
+        slug: 'test-article',
+        content: '<h1>Test</h1><p>Content here</p>',
+        meta_title: 'Test Article Title',
+        meta_description: 'This is a meta description that is long enough to pass',
+        seo_score: 50,
+        word_count: 500,
+      };
+
+      const result = await analyzeArticleSEO(article);
+
+      expect(mockedQuery).toHaveBeenCalledWith(
+        'UPDATE articles SET seo_score = $1 WHERE id = $2',
+        [result.seo_score, article.id]
+      );
     });
   });
 
