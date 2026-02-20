@@ -183,23 +183,6 @@ export interface LockedAccount {
   locked_until: string;
 }
 
-// API Keys Types
-export interface ApiKeys {
-  openai_api_key?: string;
-  unsplash_api_key?: string;
-  google_trends_api_key?: string;
-  search_console_client_id?: string;
-  search_console_client_secret?: string;
-  search_console_refresh_token?: string;
-}
-
-export interface ApiKeyField {
-  key: keyof ApiKeys;
-  label: string;
-  placeholder: string;
-  description?: string;
-}
-
 // ============================================================================
 // User Profile Types
 // ============================================================================
