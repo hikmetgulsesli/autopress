@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth';
+import { authenticate as requireAuth } from '../middleware/auth';
 import { getAuditLogs, getSecurityStats } from '../services/audit.service';
 import { query } from '../db/connection';
 
@@ -87,7 +87,7 @@ router.get('/locked-accounts', requireAuth, async (req, res, next) => {
  */
 router.post('/unlock-account/:userId', requireAuth, async (req, res, next) => {
   try {
-    const userId = parseInt(req.params.userId);
+    const userId = parseInt(String(req.params.userId));
 
     // TODO: Add admin role check here when roles are implemented
 

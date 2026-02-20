@@ -23,6 +23,7 @@ import {
   MoreVertical,
 } from 'lucide-react';
 import api from '../services/api';
+import { notify } from '../utils/toast.tsx';
 import { Article, Site, PublishHistory, PublishQueueItem } from '../types';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -256,10 +257,11 @@ export default function Publisher() {
   const handleSchedule = async (data: ScheduleData) => {
     try {
       await api.post('/publish/schedule', data);
+      notify.success('Makale başarıyla zamanlandı');
       fetchData();
     } catch (err) {
       console.error('Failed to schedule article:', err);
-      alert('Makale zamanlanırken bir hata oluştu.');
+      notify.error('Makale zamanlanırken bir hata oluştu');
     }
   };
 
@@ -267,20 +269,22 @@ export default function Publisher() {
     if (!confirm('Bu zamanlanmış yayını iptal etmek istediğinize emin misiniz?')) return;
     try {
       await api.delete(`/publish/schedule/${articleId}`);
+      notify.success('Zamanlama iptal edildi');
       fetchData();
     } catch (err) {
       console.error('Failed to cancel schedule:', err);
-      alert('Zamanlama iptal edilirken bir hata oluştu.');
+      notify.error('Zamanlama iptal edilirken bir hata oluştu');
     }
   };
 
   const handleReschedule = async (articleId: number, newDate: string) => {
     try {
       await api.patch(`/publish/schedule/${articleId}`, { scheduledAt: newDate });
+      notify.success('Yeniden zamanlama başarılı');
       fetchData();
     } catch (err) {
       console.error('Failed to reschedule:', err);
-      alert('Yeniden zamanlama yapılırken bir hata oluştu.');
+      notify.error('Yeniden zamanlama yapılırken bir hata oluştu');
     }
   };
 

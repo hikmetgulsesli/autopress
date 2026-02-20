@@ -54,6 +54,20 @@ export interface Site {
   niche: string;
   is_active: boolean;
   adsense_status?: 'approved' | 'pending' | 'rejected' | 'not_configured';
+  api_credentials?: {
+    wordpress?: {
+      site_url: string;
+      username: string;
+      app_password: string;
+    };
+    blogger?: {
+      client_id: string;
+      client_secret: string;
+      oauth_token?: string;
+      oauth_refresh_token?: string;
+      oauth_expires_at?: string;
+    };
+  };
 }
 
 export interface PublishHistory {
