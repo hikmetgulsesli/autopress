@@ -339,7 +339,7 @@ export const saveBrokenLink = async (
   await query(
     `INSERT INTO broken_links (article_id, url, link_type, anchor_text, status_code, error_message, is_broken, last_checked)
      VALUES ($1, $2, $3, $4, $5, $6, true, NOW())
-     ON CONFLICT (id) DO UPDATE SET
+     ON CONFLICT (article_id, url) DO UPDATE SET
        status_code = $5,
        error_message = $6,
        is_broken = true,

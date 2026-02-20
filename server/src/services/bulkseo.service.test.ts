@@ -335,6 +335,32 @@ describe('BulkSEOService', () => {
         expect.arrayContaining([1, 'https://example.com', 'external', 'Example', 404, 'Not Found'])
       );
     });
+
+    it('should use ON CONFLICT (article_id, url) for upsert', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+
+      await saveBrokenLink(1, 'https://example.com', 'external', 'Example', 404, 'Not Found');
+
+      const queryCall = mockedQuery.mock.calls[0];
+      const sqlQuery = queryCall[0] as string;
+      
+      expect(sqlQuery).toContain('ON CONFLICT (article_id, url)');
+      expect(sqlQuery).not.toContain('ON CONFLICT (id)');
+    });
+
+    it('should update existing broken link on conflict', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+
+      await saveBrokenLink(1, 'https://example.com', 'external', 'Example', 500, 'Server Error');
+
+      const queryCall = mockedQuery.mock.calls[0];
+      const sqlQuery = queryCall[0] as string;
+      
+      expect(sqlQuery).toContain('DO UPDATE SET');
+      expect(sqlQuery).toContain('status_code =');
+      expect(sqlQuery).toContain('error_message =');
+      expect(sqlQuery).toContain('last_checked = NOW()');
+    });
   });
 
   describe('clearBrokenLinks', () => {
