@@ -13,6 +13,7 @@ import seoRoutes from './routes/seo';
 import settingsRoutes from './routes/settings';
 import searchConsoleRoutes from './routes/searchconsole';
 import schedulerRoutes from './routes/scheduler';
+import internalLinksRoutes from './routes/internallinks';
 import { startScheduler, getSchedulerStatus } from './services/scheduler.service';
 
 dotenv.config();
@@ -34,6 +35,7 @@ app.use('/api/seo', seoRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/search-console', searchConsoleRoutes);
 app.use('/api/scheduler', schedulerRoutes);
+app.use('/api/internal-links', internalLinksRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
