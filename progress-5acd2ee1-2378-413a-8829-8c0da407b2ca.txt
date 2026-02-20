@@ -3,9 +3,9 @@
 ---
 US-006: Blogger API Integration Service - COMPLETED
 - Branch: US-006
-- PR: https://github.com/hikmetgulsesli/autopress/pull/6
+- PR: https://github.com/hikmetgulsesli/autopress/pull/13
 - Implemented: Blogger API integration with OAuth 2.0, blog listing, post/page publishing
-- Completed: Fri Feb 20 12:41:00 +03 2026
+- Completed: Fri Feb 20 13:28:00 +03 2026
 
 ---
 US-001: Design System & CSS Custom Properties - COMPLETED

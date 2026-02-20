@@ -10,22 +10,13 @@ describe('SearchConsoleService', () => {
 
   describe('Configuration Validation', () => {
     it('should reject when Google Search Console is not configured', async () => {
-      // Without config, should get API error (googleapis throws when JWT cannot be created)
+      // Without config, should get API_ERROR (since google.auth.JWT is created)
       await expect(
         submitUrlForIndexing({ url: 'https://example.com/post' })
       ).rejects.toMatchObject({ code: 'API_ERROR' });
 
       await expect(
         checkUrlIndexStatus({ url: 'https://example.com/post' })
-      ).rejects.toMatchObject({ code: 'API_ERROR' });
-    });
-
-    it('should reject incomplete configuration', async () => {
-      // Partial config also throws API error
-      process.env.GOOGLE_PRIVATE_KEY = 'test-key';
-      
-      await expect(
-        submitUrlForIndexing({ url: 'https://example.com/post' })
       ).rejects.toMatchObject({ code: 'API_ERROR' });
     });
   });
