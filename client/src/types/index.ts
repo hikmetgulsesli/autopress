@@ -182,37 +182,3 @@ export interface LockedAccount {
   failed_login_attempts: number;
   locked_until: string;
 }
-
-// ============================================================================
-// User Profile Types
-// ============================================================================
-
-export interface UserProfile {
-  id: number;
-  email: string;
-  name: string;
-  role: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface UpdateProfileRequest {
-  name: string;
-}
-
-export interface ChangePasswordRequest {
-  currentPassword: string;
-  newPassword: string;
-}
-
-// ============================================================================
-// Notification Settings Types
-// ============================================================================
-
-export interface NotificationSettings {
-  emailEnabled: boolean;
-  pushEnabled: boolean;
-  notifyOnPublishSuccess: boolean;
-  notifyOnPublishFailed: boolean;
-  notifyOnTrendingTopic: boolean;
-}

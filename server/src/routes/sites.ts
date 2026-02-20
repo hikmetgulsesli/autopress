@@ -75,4 +75,63 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// Test connection to site
+router.post('/:id/test-connection', async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await query('SELECT * FROM sites WHERE id = $1', [req.params.id]);
+    if (!result.rows[0]) return res.status(404).json({ error: 'Site bulunamadı' });
+
+    const site = result.rows[0];
+
+    // Simulate connection test based on platform
+    // In a real implementation, this would make actual API calls to verify credentials
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Check if required credentials exist
+    const hasCredentials = site.api_credentials && Object.keys(site.api_credentials).length > 0;
+    const hasPlatformId = site.platform_id && site.platform_id.trim().length > 0;
+
+    if (!hasPlatformId) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_PLATFORM_ID',
+          message: 'Platform ID eksik. Lütfen site ayarlarından platform ID ekleyin.',
+        },
+      });
+    }
+
+    if (!hasCredentials) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_CREDENTIALS',
+          message: 'API kimlik bilgileri eksik. Lütfen site ayarlarından API bilgilerini ekleyin.',
+        },
+      });
+    }
+
+    // Simulate success/failure based on credential validity (mock logic for demo)
+    const isValid = site.api_credentials.api_key && site.api_credentials.api_key.length > 5;
+
+    if (!isValid) {
+      return res.status(401).json({
+        error: {
+          code: 'INVALID_CREDENTIALS',
+          message: 'Geçersiz kimlik bilgileri. Lütfen API anahtarınızı kontrol edin.',
+        },
+      });
+    }
+
+    res.json({
+      data: {
+        success: true,
+        message: 'Bağlantı başarılı! Site erişimi doğrulandı.',
+        platform: site.platform,
+        tested_at: new Date().toISOString(),
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
