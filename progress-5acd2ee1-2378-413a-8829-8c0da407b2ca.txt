@@ -18,6 +18,14 @@ US-015: SEO Scoring Service - COMPLETED
 - Completed: Fri Feb 20 15:56:00 +03 2026
 
 ---
+US-003: TipTap WYSIWYG Editor Integration - COMPLETED
+- Branch: US-003
+- PR: https://github.com/hikmetgulsesli/autopress/pull/35
+- Implemented: TipTap editor (@tiptap/react, @tiptap/starter-kit) integrated into ContentStudio page, reusable TipTapEditor component with toolbar (headings, bold, italic, bullet/ordered lists, links), onChange callback for content sync, dark theme styling with CSS custom properties
+- Tests: 7 tests for TipTapEditor component
+- Completed: Fri Feb 20 16:01:00 +03 2026
+
+---
 US-010: Google Search Console Indexing API - COMPLETED
 - Branch: US-010
 - PR: https://github.com/hikmetgulsesli/autopress/pull/29

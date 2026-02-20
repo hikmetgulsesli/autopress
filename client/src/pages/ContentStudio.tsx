@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X } from 'lucide-react';
 import { TipTapEditor } from '../components/TipTapEditor';
 import ImageSearch from '../components/ImageSearch';
@@ -6,11 +7,21 @@ import ImageAttribution from '../components/ImageAttribution';
 import type { ImageSearchResult } from '../types';
 
 export default function ContentStudio() {
+  const [searchParams] = useSearchParams();
+  const topicParam = searchParams.get('topic');
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isPreview, setIsPreview] = useState(false);
   const [featuredImage, setFeaturedImage] = useState<ImageSearchResult | null>(null);
   const [showImageSearch, setShowImageSearch] = useState(false);
+
+  // Pre-fill title if topic is provided via URL
+  useEffect(() => {
+    if (topicParam) {
+      setTitle(topicParam);
+    }
+  }, [topicParam]);
 
   const handleSave = () => {
     // TODO: Save article to backend
