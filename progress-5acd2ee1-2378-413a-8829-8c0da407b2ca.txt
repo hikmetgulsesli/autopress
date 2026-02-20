@@ -1,5 +1,22 @@
 
 
+
+---
+US-013: RSS Feed Aggregator Service - COMPLETED
+- Branch: US-013
+- PR: https://github.com/hikmetgulsesli/autopress/pull/34
+- Implemented: rss.service.ts with rss-parser integration, feed CRUD operations, article extraction (title, link, publish date, excerpt, author, categories, image), duplicate detection by URL, feed polling schedule (hourly via node-cron), RSS items stored for trend analysis, database migration for feeds/items/fetch logs
+- Tests: 40 tests for RSS service
+- Completed: Fri Feb 20 16:05:00 +03 2026
+
+---
+US-015: SEO Scoring Service - COMPLETED
+- Branch: US-015
+- PR: https://github.com/hikmetgulsesli/autopress/pull/33
+- Implemented: seo.service.ts with calculateSEOScore() function, title length check (50-60 chars), meta description check (150-160 chars), keyword density calculation (1-3%), H2/H3 usage analysis, image alt tag presence check, internal/external link counting, Flesch Reading Ease readability score, overall 0-100 score with breakdown and recommendations
+- Tests: 28 tests for SEO service
+- Completed: Fri Feb 20 15:56:00 +03 2026
+
 ---
 US-010: Google Search Console Indexing API - COMPLETED
 - Branch: US-010
