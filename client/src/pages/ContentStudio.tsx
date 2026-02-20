@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle } from 'lucide-react';
 import { TipTapEditor } from '../components/TipTapEditor';
 import ImageSearch from '../components/ImageSearch';
 import ImageAttribution from '../components/ImageAttribution';
 import { useArticleLoader } from '../hooks/useArticleLoader';
-import { notify } from '../utils/toast';
 import api from '../services/api';
+import { notify } from '../utils/toast';
 import type { ImageSearchResult, Article } from '../types';
 
 export default function ContentStudio() {
@@ -14,9 +15,10 @@ export default function ContentStudio() {
   const [isPreview, setIsPreview] = useState(false);
   const [featuredImage, setFeaturedImage] = useState<ImageSearchResult | null>(null);
   const [showImageSearch, setShowImageSearch] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   
   const { article, isLoading, error } = useArticleLoader();
+
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load article data when fetched from URL param
   useEffect(() => {
@@ -27,8 +29,8 @@ export default function ContentStudio() {
   }, [article]);
 
   const handleSave = async () => {
-    if (!title.trim() || !content.trim()) {
-      notify.error('Başlık ve içerik alanları zorunludur');
+    if (!title.trim()) {
+      notify.error('Lütfen bir başlık girin');
       return;
     }
 
@@ -38,29 +40,30 @@ export default function ContentStudio() {
       const articleData = {
         title: title.trim(),
         content,
-        excerpt: content.slice(0, 200).replace(/<[^\u003e]*>/g, '') + '...',
         featured_image_url: featuredImage?.url || null,
+        featured_image_attribution: featuredImage ? {
+          photographer: featuredImage.photographer?.name || '',
+          portfolio: featuredImage.photographer?.portfolioUrl || '',
+        } : null,
       };
 
-      let savedArticle: Article;
+      let response;
 
       if (article?.id) {
-        // Update existing article
-        const response = await api.put(`/articles/${article.id}`, articleData);
-        savedArticle = response.data;
+        // Existing article - PUT request
+        response = await api.put(`/articles/${article.id}`, articleData);
         notify.success('Makale başarıyla güncellendi');
       } else {
-        // Create new article
-        const response = await api.post('/articles', articleData);
-        savedArticle = response.data;
+        // New article - POST request
+        response = await api.post('/articles', articleData);
         notify.success('Makale başarıyla kaydedildi');
       }
 
-      return savedArticle;
+      console.log('Article saved:', response.data);
     } catch (err: any) {
+      console.error('Error saving article:', err);
       const errorMessage = err.response?.data?.error || 'Makale kaydedilirken bir hata oluştu';
       notify.error(errorMessage);
-      throw err;
     } finally {
       setIsSaving(false);
     }
@@ -136,16 +139,11 @@ export default function ContentStudio() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Kaydediliyor...
-              </>
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <>
-                <Save className="w-4 h-4" />
-                Kaydet
-              </>
+              <Save className="w-4 h-4" />
             )}
+            {isSaving ? 'Kaydediliyor...' : 'Kaydet'}
           </button>
         </div>
       </div>

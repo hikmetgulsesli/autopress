@@ -34,7 +34,7 @@ router.get('/health', async (_req: Request, res: Response) => {
 // GET /api/search-console/quota - Get quota information
 router.get('/quota', async (_req: Request, res: Response) => {
   try {
-    const quota = getQuotaInfo();
+    const quota = await getQuotaInfo();
     res.json(quota);
   } catch (err) {
     res.status(500).json({
