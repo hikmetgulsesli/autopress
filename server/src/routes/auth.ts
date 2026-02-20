@@ -7,10 +7,21 @@ import { config, PASSWORD_REGEX } from '../config';
 
 const router = Router();
 
+// Account lockout configuration
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MINUTES = 30;
+const LOCKOUT_DURATION_MS = LOCKOUT_DURATION_MINUTES * 60 * 1000;
+
 function generateTokens(user: { id: number; email: string; role: string }) {
   const accessToken = jwt.sign(user, config.JWT_SECRET, { expiresIn: '1h' });
   const refreshToken = jwt.sign(user, config.JWT_REFRESH_SECRET, { expiresIn: '7d' });
   return { accessToken, refreshToken };
+}
+
+function getRemainingLockoutTime(lockedUntil: Date | null): number {
+  if (!lockedUntil) return 0;
+  const remaining = new Date(lockedUntil).getTime() - Date.now();
+  return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
 }
 
 router.post('/login', async (req: Request, res: Response) => {
@@ -20,10 +31,60 @@ router.post('/login', async (req: Request, res: Response) => {
 
     const result = await query('SELECT * FROM users WHERE email = $1', [email]);
     const user = result.rows[0];
-    if (!user) return res.status(401).json({ error: 'Geçersiz kimlik bilgileri' });
+    if (!user) {
+      // Generic error message for security - prevents user enumeration
+      return res.status(401).json({ error: 'Geçersiz kimlik bilgileri' });
+    }
+
+    // Check if account is currently locked
+    const failedLoginAttempts = user.failed_login_attempts || 0;
+    const lockedUntil = user.locked_until ? new Date(user.locked_until) : null;
+    
+    if (lockedUntil && lockedUntil > new Date()) {
+      const remainingSeconds = getRemainingLockoutTime(lockedUntil);
+      const remainingMinutes = Math.ceil(remainingSeconds / 60);
+      
+      return res.status(423).json({ 
+        error: 'Hesap kilitlendi',
+        remainingMinutes: remainingMinutes
+      });
+    }
 
     const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Geçersiz kimlik bilgileri' });
+    
+    if (!valid) {
+      // Increment failed login attempts
+      const newFailedAttempts = failedLoginAttempts + 1;
+      
+      if (newFailedAttempts >= MAX_FAILED_ATTEMPTS) {
+        // Lock the account for 30 minutes
+        const lockoutTime = new Date(Date.now() + LOCKOUT_DURATION_MS);
+        await query(
+          'UPDATE users SET failed_login_attempts = $1, locked_until = $2 WHERE id = $3',
+          [newFailedAttempts, lockoutTime.toISOString(), user.id]
+        );
+        
+        return res.status(423).json({ 
+          error: 'Geçersiz kimlik bilgileri',
+          remainingMinutes: LOCKOUT_DURATION_MINUTES
+        });
+      } else {
+        // Just increment the counter
+        await query(
+          'UPDATE users SET failed_login_attempts = $1 WHERE id = $2',
+          [newFailedAttempts, user.id]
+        );
+      }
+      
+      // Generic error message - don't reveal if email exists
+      return res.status(401).json({ error: 'Geçersiz kimlik bilgileri' });
+    }
+
+    // Successful login - reset failed attempts and unlock
+    await query(
+      'UPDATE users SET failed_login_attempts = 0, locked_until = NULL, refresh_token = $1 WHERE id = $2',
+      [null, user.id]
+    );
 
     const tokens = generateTokens({ id: user.id, email: user.email, role: user.role });
     await query('UPDATE users SET refresh_token = $1 WHERE id = $2', [tokens.refreshToken, user.id]);
