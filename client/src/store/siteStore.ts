@@ -1,13 +1,31 @@
 import { create } from 'zustand';
 import api from '../services/api';
 
+// API Credentials interfaces
+export interface WordPressCredentials {
+  siteUrl: string;
+  username: string;
+  appPassword: string;
+}
+
+export interface BloggerCredentials {
+  clientId: string;
+  clientSecret: string;
+  redirectUri?: string;
+}
+
+export interface ApiCredentials {
+  wordpress?: WordPressCredentials;
+  blogger?: BloggerCredentials;
+}
+
 export interface Site {
   id: number;
   name: string;
   domain: string;
   platform: 'blogger' | 'wordpress';
   platform_id: string;
-  api_credentials: any;
+  api_credentials: ApiCredentials | null;
   language: string;
   niche: string;
   adsense_status: string;

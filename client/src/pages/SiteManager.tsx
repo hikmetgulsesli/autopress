@@ -1,6 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useSiteStore, Site } from '../store/siteStore';
-import { Plus, Globe, Pencil, Trash2, X, Loader2, ExternalLink } from 'lucide-react';
+import { Plus, Globe, Pencil, Trash2, X, Loader2, ExternalLink, Eye, EyeOff } from 'lucide-react';
+
+// API Credentials interfaces
+export interface WordPressCredentials {
+  siteUrl: string;
+  username: string;
+  appPassword: string;
+}
+
+export interface BloggerCredentials {
+  clientId: string;
+  clientSecret: string;
+  redirectUri?: string;
+}
+
+export interface ApiCredentials {
+  wordpress?: WordPressCredentials;
+  blogger?: BloggerCredentials;
+}
 
 function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () => void; onSave: (data: Partial<Site>) => Promise<void> }) {
   const [form, setForm] = useState<{
@@ -11,6 +29,7 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
     language: string;
     niche: string;
     adsense_status: string;
+    api_credentials: ApiCredentials;
   }>({
     name: site?.name || '',
     domain: site?.domain || '',
@@ -19,8 +38,11 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
     language: site?.language || 'tr',
     niche: site?.niche || '',
     adsense_status: site?.adsense_status || 'pending',
+    api_credentials: site?.api_credentials || {},
   });
   const [saving, setSaving] = useState(false);
+  const [showWpPassword, setShowWpPassword] = useState(false);
+  const [showBloggerSecret, setShowBloggerSecret] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,12 +50,38 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
     try { await onSave(form); onClose(); } catch {} finally { setSaving(false); }
   };
 
+  const updateWordPressCreds = (field: keyof WordPressCredentials, value: string) => {
+    setForm(prev => ({
+      ...prev,
+      api_credentials: {
+        ...prev.api_credentials,
+        wordpress: {
+          ...prev.api_credentials?.wordpress,
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const updateBloggerCreds = (field: keyof BloggerCredentials, value: string) => {
+    setForm(prev => ({
+      ...prev,
+      api_credentials: {
+        ...prev.api_credentials,
+        blogger: {
+          ...prev.api_credentials?.blogger,
+          [field]: value,
+        },
+      },
+    }));
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-dark-900 border border-dark-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-dark-700">
           <h2 className="text-lg font-semibold text-white">{site ? 'Site Düzenle' : 'Yeni Site Ekle'}</h2>
-          <button onClick={onClose} className="p-1 text-dark-400 hover:text-white"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1 text-dark-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
@@ -50,7 +98,7 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
             <div>
               <label className="block text-sm text-dark-300 mb-1">Platform *</label>
               <select value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value as 'blogger' | 'wordpress' })}
-                className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none">
+                className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none cursor-pointer">
                 <option value="blogger">Blogger</option>
                 <option value="wordpress">WordPress</option>
               </select>
@@ -58,7 +106,7 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
             <div>
               <label className="block text-sm text-dark-300 mb-1">Dil</label>
               <select value={form.language} onChange={(e) => setForm({ ...form, language: e.target.value })}
-                className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none">
+                className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none cursor-pointer">
                 <option value="tr">Türkçe</option>
                 <option value="en">English</option>
                 <option value="de">Deutsch</option>
@@ -82,15 +130,121 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
           <div>
             <label className="block text-sm text-dark-300 mb-1">AdSense Durumu</label>
             <select value={form.adsense_status} onChange={(e) => setForm({ ...form, adsense_status: e.target.value })}
-              className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none">
+              className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none cursor-pointer">
               <option value="pending">Beklemede</option>
               <option value="applied">Başvuru Yapıldı</option>
               <option value="approved">Onaylandı</option>
               <option value="rejected">Reddedildi</option>
             </select>
           </div>
+
+          {/* WordPress API Credentials */}
+          {form.platform === 'wordpress' && (
+            <div className="border-t border-dark-700 pt-4 mt-4">
+              <h3 className="text-sm font-medium text-white mb-3">WordPress API Bilgileri</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1">Site URL</label>
+                  <input 
+                    type="url"
+                    value={form.api_credentials?.wordpress?.siteUrl || ''} 
+                    onChange={(e) => updateWordPressCreds('siteUrl', e.target.value)}
+                    placeholder="https://siteadi.com"
+                    className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1">Kullanıcı Adı</label>
+                  <input 
+                    type="text"
+                    value={form.api_credentials?.wordpress?.username || ''} 
+                    onChange={(e) => updateWordPressCreds('username', e.target.value)}
+                    placeholder="WordPress kullanıcı adı"
+                    className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1">Uygulama Şifresi</label>
+                  <div className="relative">
+                    <input 
+                      type={showWpPassword ? 'text' : 'password'}
+                      value={form.api_credentials?.wordpress?.appPassword || ''} 
+                      onChange={(e) => updateWordPressCreds('appPassword', e.target.value)}
+                      placeholder="WordPress uygulama şifresi"
+                      className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none pr-10" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowWpPassword(!showWpPassword)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-dark-400 hover:text-white cursor-pointer"
+                      aria-label={showWpPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                    >
+                      {showWpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-dark-500 mt-1">WordPress Admin → Kullanıcılar → Profil → Uygulama Şifreleri</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Blogger API Credentials */}
+          {form.platform === 'blogger' && (
+            <div className="border-t border-dark-700 pt-4 mt-4">
+              <h3 className="text-sm font-medium text-white mb-3">Blogger API Bilgileri</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1">Client ID</label>
+                  <input 
+                    type="text"
+                    value={form.api_credentials?.blogger?.clientId || ''} 
+                    onChange={(e) => updateBloggerCreds('clientId', e.target.value)}
+                    placeholder="Google OAuth Client ID"
+                    className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1">Client Secret</label>
+                  <div className="relative">
+                    <input 
+                      type={showBloggerSecret ? 'text' : 'password'}
+                      value={form.api_credentials?.blogger?.clientSecret || ''} 
+                      onChange={(e) => updateBloggerCreds('clientSecret', e.target.value)}
+                      placeholder="Google OAuth Client Secret"
+                      className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none pr-10" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowBloggerSecret(!showBloggerSecret)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-dark-400 hover:text-white cursor-pointer"
+                      aria-label={showBloggerSecret ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                    >
+                      {showBloggerSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1">Redirect URI (Opsiyonel)</label>
+                  <input 
+                    type="url"
+                    value={form.api_credentials?.blogger?.redirectUri || ''} 
+                    onChange={(e) => updateBloggerCreds('redirectUri', e.target.value)}
+                    placeholder="https://siteadi.com/auth/callback"
+                    className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-primary-500 focus:outline-none" 
+                  />
+                </div>
+                <div className="bg-dark-800/50 p-3 rounded-lg">
+                  <p className="text-xs text-dark-400">
+                    <strong className="text-dark-300">OAuth Kurulumu:</strong> Google Cloud Console&apos;dan OAuth 2.0 kimlik bilgilerini alın. 
+                    Blogger API&apos;yi etkinleştirin ve yetkilendirme URL&apos;si oluşturun.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <button type="submit" disabled={saving}
-            className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer">
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
             {site ? 'Güncelle' : 'Site Ekle'}
           </button>
@@ -128,7 +282,7 @@ export default function SiteManager() {
           <p className="text-dark-400 mt-1">Blogger ve WordPress sitelerinizi yönetin</p>
         </div>
         <button onClick={() => { setEditSite(null); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors">
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors cursor-pointer">
           <Plus className="w-4 h-4" /> Yeni Site
         </button>
       </div>
@@ -162,11 +316,11 @@ export default function SiteManager() {
                 </div>
                 <div className="flex gap-1">
                   <button onClick={() => { setEditSite(site); setShowForm(true); }}
-                    className="p-1.5 text-dark-400 hover:text-primary-400 hover:bg-dark-800 rounded-lg transition-colors">
+                    className="p-1.5 text-dark-400 hover:text-primary-400 hover:bg-dark-800 rounded-lg transition-colors cursor-pointer">
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button onClick={() => handleDelete(site.id)}
-                    className="p-1.5 text-dark-400 hover:text-red-400 hover:bg-dark-800 rounded-lg transition-colors">
+                    className="p-1.5 text-dark-400 hover:text-red-400 hover:bg-dark-800 rounded-lg transition-colors cursor-pointer">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -178,6 +332,19 @@ export default function SiteManager() {
                 <span className={`text-xs px-2 py-1 rounded-full bg-dark-800 ${adsenseColors[site.adsense_status] || 'text-dark-400'}`}>
                   AdSense: {adsenseLabels[site.adsense_status] || site.adsense_status}
                 </span>
+              </div>
+              {/* API Credentials Status Indicator */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {site.api_credentials?.wordpress?.siteUrl && (
+                  <span className="text-xs px-2 py-1 rounded-full bg-sky-500/20 text-sky-400">
+                    WP API: Bağlı
+                  </span>
+                )}
+                {site.api_credentials?.blogger?.clientId && (
+                  <span className="text-xs px-2 py-1 rounded-full bg-orange-500/20 text-orange-400">
+                    Blogger API: Ayarlandı
+                  </span>
+                )}
               </div>
               {!site.is_active && (
                 <div className="mt-3 text-xs text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg">Pasif</div>
