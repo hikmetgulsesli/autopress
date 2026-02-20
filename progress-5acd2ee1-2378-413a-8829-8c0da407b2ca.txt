@@ -3,10 +3,10 @@
 ---
 US-008: Scheduled Publishing & Cron Service - COMPLETED
 - Branch: US-008
-- PR: https://github.com/hikmetgulsesli/autopress/pull/15
+- PR: https://github.com/hikmetgulsesli/autopress/pull/25
 - Implemented: node-cron scheduler, publish queue with status tracking, random jitter (±15min), retry logic (max 3), publish_history logging
 - Tests: 28 tests for scheduler service
-- Completed: Fri Feb 20 13:38:00 +03 2026
+- Completed: Fri Feb 20 14:54:00 +03 2026
 
 ---
 US-006: Blogger API Integration Service - COMPLETED
@@ -21,11 +21,3 @@ US-001: Design System & CSS Custom Properties - COMPLETED
 - PR: https://github.com/hikmetgulsesli/autopress/pull/1
 - Implemented: Design tokens with CSS custom properties
 - Completed: Fri Feb 20 11:48:19 +03 2026
-
----
-US-006: Blogger API Integration Service - COMPLETED
-- Branch: us-006
-- PR: https://github.com/hikmetgulsesli/autopress/pull/24
-- Implemented: Google Blogger API integration with OAuth 2.0, token management, blog listing, post/page publishing
-- Tests: 32 unit tests covering all functionality
-- Completed: Fri Feb 20 14:47:00 +03 2026
