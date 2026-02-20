@@ -2,21 +2,32 @@ import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import * as bulkSeoService from '../services/bulkseo.service';
 import { logger } from '../utils/logger';
+import { validateBody, validateQuery, validateParams } from '../middleware/validate';
+import {
+  bulkAnalyzeSchema,
+  bulkCheckLinksSchema,
+  bulkSuggestLinksSchema,
+  linkSuggestionsQuerySchema,
+  suggestionIdParamSchema,
+  brokenLinksQuerySchema,
+  bulkExportQuerySchema,
+  bulkJobIdParamSchema,
+  bulkJobsQuerySchema,
+} from '../middleware/schemas';
 
 const router = Router();
 router.use(authenticate);
 
 // Get all bulk jobs
-router.get('/jobs', async (req: AuthRequest, res: Response) => {
+router.get('/jobs', validateQuery(bulkJobsQuerySchema), async (req: AuthRequest, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const { page, limit } = req.query;
     
-    const { jobs, total } = await bulkSeoService.getBulkJobs(page, limit);
+    const { jobs, total } = await bulkSeoService.getBulkJobs(page as number, limit as number);
     
     res.json({
       data: jobs,
-      meta: { page, limit, total, pages: Math.ceil(total / limit) },
+      meta: { page, limit, total, pages: Math.ceil(total / (limit as number)) },
     });
   } catch (err: any) {
     logger.error('Failed to get bulk jobs:', err);
@@ -25,10 +36,9 @@ router.get('/jobs', async (req: AuthRequest, res: Response) => {
 });
 
 // Get single job
-router.get('/jobs/:id', async (req: AuthRequest, res: Response) => {
+router.get('/jobs/:id', validateParams(bulkJobIdParamSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const jobId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const job = await bulkSeoService.getBulkJob(parseInt(jobId as string));
+    const job = await bulkSeoService.getBulkJob(req.params.id);
     if (!job) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Job not found' } });
     }
@@ -40,16 +50,16 @@ router.get('/jobs/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // Start bulk SEO analysis
-router.post('/analyze', async (req: AuthRequest, res: Response) => {
+router.post('/analyze', validateBody(bulkAnalyzeSchema), async (req: AuthRequest, res: Response) => {
   try {
     const { site_id, status, language, min_seo_score, max_seo_score } = req.body;
     
     const filters = {
-      ...(site_id && { site_id: parseInt(site_id) }),
+      ...(site_id && { site_id }),
       ...(status && { status }),
       ...(language && { language }),
-      ...(min_seo_score !== undefined && { min_seo_score: parseInt(min_seo_score) }),
-      ...(max_seo_score !== undefined && { max_seo_score: parseInt(max_seo_score) }),
+      ...(min_seo_score !== undefined && { min_seo_score }),
+      ...(max_seo_score !== undefined && { max_seo_score }),
     };
 
     // Create job
@@ -69,13 +79,13 @@ router.post('/analyze', async (req: AuthRequest, res: Response) => {
 });
 
 // Start link checker
-router.post('/check-links', async (req: AuthRequest, res: Response) => {
+router.post('/check-links', validateBody(bulkCheckLinksSchema), async (req: AuthRequest, res: Response) => {
   try {
     const { site_id, article_id } = req.body;
     
     const filters = {
-      ...(site_id && { site_id: parseInt(site_id) }),
-      ...(article_id && { article_id: parseInt(article_id) }),
+      ...(site_id && { site_id }),
+      ...(article_id && { article_id }),
     };
 
     const job = await bulkSeoService.createBulkJob('link_checker', filters);
@@ -94,7 +104,7 @@ router.post('/check-links', async (req: AuthRequest, res: Response) => {
 });
 
 // Generate internal link suggestions
-router.post('/suggest-links', async (req: AuthRequest, res: Response) => {
+router.post('/suggest-links', validateBody(bulkSuggestLinksSchema), async (req: AuthRequest, res: Response) => {
   try {
     const { site_id } = req.body;
     
@@ -114,17 +124,19 @@ router.post('/suggest-links', async (req: AuthRequest, res: Response) => {
 });
 
 // Get link suggestions
-router.get('/suggestions', async (req: AuthRequest, res: Response) => {
+router.get('/suggestions', validateQuery(linkSuggestionsQuerySchema), async (req: AuthRequest, res: Response) => {
   try {
-    const articleId = req.query.article_id ? parseInt(req.query.article_id as string) : undefined;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 50;
+    const { article_id, page, limit } = req.query;
     
-    const { suggestions, total } = await bulkSeoService.getLinkSuggestions(articleId, page, limit);
+    const { suggestions, total } = await bulkSeoService.getLinkSuggestions(
+      article_id as number | undefined,
+      page as number,
+      limit as number
+    );
     
     res.json({
       data: suggestions,
-      meta: { page, limit, total, pages: Math.ceil(total / limit) },
+      meta: { page, limit, total, pages: Math.ceil(total / (limit as number)) },
     });
   } catch (err: any) {
     logger.error('Failed to get link suggestions:', err);
@@ -133,10 +145,9 @@ router.get('/suggestions', async (req: AuthRequest, res: Response) => {
 });
 
 // Apply link suggestion
-router.post('/suggestions/:id/apply', async (req: AuthRequest, res: Response) => {
+router.post('/suggestions/:id/apply', validateParams(suggestionIdParamSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const suggestionId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    await bulkSeoService.applyLinkSuggestion(parseInt(suggestionId as string));
+    await bulkSeoService.applyLinkSuggestion(req.params.id);
     res.json({ message: 'Link suggestion applied' });
   } catch (err: any) {
     logger.error('Failed to apply link suggestion:', err);
@@ -145,21 +156,18 @@ router.post('/suggestions/:id/apply', async (req: AuthRequest, res: Response) =>
 });
 
 // Get broken links
-router.get('/broken-links', async (req: AuthRequest, res: Response) => {
+router.get('/broken-links', validateQuery(brokenLinksQuerySchema), async (req: AuthRequest, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 50;
-    const linkType = req.query.type as 'internal' | 'external' | undefined;
-    const articleId = req.query.article_id ? parseInt(req.query.article_id as string) : undefined;
+    const { page, limit, type, article_id } = req.query;
     
-    const { links, total } = await bulkSeoService.getBrokenLinks(page, limit, {
-      link_type: linkType,
-      article_id: articleId,
+    const { links, total } = await bulkSeoService.getBrokenLinks(page as number, limit as number, {
+      link_type: type as 'internal' | 'external' | undefined,
+      article_id: article_id as number | undefined,
     });
     
     res.json({
       data: links,
-      meta: { page, limit, total, pages: Math.ceil(total / limit) },
+      meta: { page, limit, total, pages: Math.ceil(total / (limit as number)) },
     });
   } catch (err: any) {
     logger.error('Failed to get broken links:', err);
@@ -168,15 +176,14 @@ router.get('/broken-links', async (req: AuthRequest, res: Response) => {
 });
 
 // Export SEO report
-router.get('/export', async (req: AuthRequest, res: Response) => {
+router.get('/export', validateQuery(bulkExportQuerySchema), async (req: AuthRequest, res: Response) => {
   try {
-    const format = (req.query.format as string) || 'json';
-    const { site_id, status, language } = req.query;
+    const { format, site_id, status, language } = req.query;
     
     const filters = {
-      ...(site_id && { site_id: parseInt(site_id as string) }),
-      ...(status && { status: status as string }),
-      ...(language && { language: language as string }),
+      ...(site_id && { site_id }),
+      ...(status && { status }),
+      ...(language && { language }),
     };
 
     const articles = await bulkSeoService.getArticlesForAnalysis(filters);

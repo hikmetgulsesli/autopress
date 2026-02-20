@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { authLimiter, apiLimiter } from './middleware/rateLimiter';
+import { securityHeaders } from './middleware/securityHeaders';
 import authRoutes from './routes/auth';
 import sitesRoutes from './routes/sites';
 import articlesRoutes from './routes/articles';
@@ -17,6 +18,7 @@ import schedulerRoutes from './routes/scheduler';
 import imagesRoutes from './routes/images';
 import rssRoutes from './routes/rss';
 import bulkSeoRoutes from './routes/bulkseo';
+import securityRoutes from './routes/security';
 import { startScheduler, getSchedulerStatus } from './services/scheduler.service';
 
 dotenv.config();
@@ -27,6 +29,7 @@ const PORT = process.env.PORT || 4519;
 app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:3519', credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(morgan('combined', { stream: { write: (msg: string) => logger.info(msg.trim()) } }));
+app.use(securityHeaders);
 
 // Apply rate limiters
 app.use('/api/auth', authLimiter);
@@ -45,6 +48,7 @@ app.use('/api/scheduler', schedulerRoutes);
 app.use('/api/images', imagesRoutes);
 app.use('/api/rss', rssRoutes);
 app.use('/api/bulk-seo', bulkSeoRoutes);
+app.use('/api/security', securityRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

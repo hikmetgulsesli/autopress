@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Globe, PenTool, Send, TrendingUp,
-  Search, Settings, LogOut, Newspaper
+  Search, Settings, LogOut, Newspaper, Shield
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import clsx from 'clsx';
@@ -13,6 +13,7 @@ const navItems = [
   { to: '/publisher', icon: Send, label: 'Yayıncı' },
   { to: '/trends', icon: TrendingUp, label: 'Trend Explorer' },
   { to: '/seo', icon: Search, label: 'SEO Araçları' },
+  { to: '/security', icon: Shield, label: 'Güvenlik' },
   { to: '/settings', icon: Settings, label: 'Ayarlar' },
 ];
 
