@@ -78,3 +78,19 @@ US-001: Design System & CSS Custom Properties - COMPLETED
 - PR: https://github.com/hikmetgulsesli/autopress/pull/1
 - Implemented: Design tokens with CSS custom properties
 - Completed: Fri Feb 20 11:48:19 +03 2026
+
+---
+US-003: Site Connection Test Button - COMPLETED
+- Branch: US-003
+- PR: https://github.com/hikmetgulsesli/autopress/pull/72
+- Implemented: Added 'Test Connection' button to SiteManager UI for each site card, loading spinner during connection test, success message display on valid credentials, error message display on invalid credentials, testConnection method in siteStore, ConnectionTestResult interface for type safety, proper accessibility attributes (aria-label, role=alert), cursor-pointer and focus-visible ring styles per design standards
+- Tests: Typecheck passes, all 40 tests passing
+- Completed: Sat Feb 21 00:20:00 +03 2026
+
+---
+US-001: Site API Credentials Form - COMPLETED
+- Branch: US-001
+- PR: https://github.com/hikmetgulsesli/autopress/pull/70
+- Implemented: WordPress credential fields (site URL, username, app password with type=password), Blogger credential fields (client ID, client secret with type=password), conditional rendering based on platform selection, api_credentials JSON structure storage, existing credential loading in edit mode, helper text for WordPress app passwords and Blogger OAuth setup
+- Tests: 12 new credential form tests + 7 existing connection tests = 19 SiteManager tests passing, 8 server credential structure tests passing, TypeScript typecheck passes
+- Completed: Sat Feb 21 00:33:00 +03 2026

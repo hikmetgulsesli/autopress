@@ -66,7 +66,6 @@ export const createRateLimiter = (options: {
     },
     skipSuccessfulRequests: options.skipSuccessfulRequests || false,
     handler: (_req: Request, res: Response) => {
-<<<<<<< HEAD
       res.set('Retry-After', String(Math.ceil((options.windowMs || 15 * 60 * 1000) / 1000)));
       res.status(429).json({
         error: {

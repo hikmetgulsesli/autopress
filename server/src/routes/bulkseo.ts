@@ -188,7 +188,7 @@ router.get('/export', validateQuery(bulkExportQuerySchema), async (req: AuthRequ
     const articles = await bulkSeoService.getArticlesForAnalysis(filters);
     
     // Analyze all articles
-    const results = articles.map(article => bulkSeoService.analyzeArticleSEO(article));
+    const results = await Promise.all(articles.map(article => bulkSeoService.analyzeArticleSEO(article)));
     
     if (format === 'csv') {
       // Generate CSV
@@ -227,7 +227,7 @@ async function analyzeArticlesInBackground(
     
     for (const article of articles) {
       try {
-        const analysis = bulkSeoService.analyzeArticleSEO(article);
+        const analysis = await bulkSeoService.analyzeArticleSEO(article);
         results.push(analysis);
         processed++;
       } catch (err) {
