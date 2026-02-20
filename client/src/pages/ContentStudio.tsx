@@ -1,81 +1,135 @@
 import { useState } from 'react';
-import { Sparkles, Save, Eye, Image as ImageIcon, X } from 'lucide-react';
-import TipTapEditor from '../components/content/TipTapEditor';
-import ImageSearch, { ImageSearchResult, ImageAttribution } from '../components/content/ImageSearch';
+import { PenTool, Sparkles, Image as ImageIcon, Search } from 'lucide-react';
+import ImageSearch from '../components/ImageSearch';
+import type { UnsplashImage, ImageAttribution } from '../types';
 
 export default function ContentStudio() {
-  const [content, setContent] = useState('');
-  const [title, setTitle] = useState('');
-  const [activeTab, setActiveTab] = useState<'write' | 'preview'>('write');
-  const [showImageSearch, setShowImageSearch] = useState(false);
-  const [featuredImage, setFeaturedImage] = useState<ImageSearchResult | null>(null);
+  const [activeTab, setActiveTab] = useState<'content' | 'images'>('content');
+  const [featuredImage, setFeaturedImage] = useState<UnsplashImage | null>(null);
+  const [featuredImageAttribution, setFeaturedImageAttribution] = useState<ImageAttribution | null>(null);
 
-  const handleImageSelect = (image: ImageSearchResult) => {
+  const handleImageSelect = (image: UnsplashImage, attribution: ImageAttribution) => {
     setFeaturedImage(image);
-    setShowImageSearch(false);
+    setFeaturedImageAttribution(attribution);
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Content Studio</h1>
-          <p className="text-text-muted mt-1">Create SEO-optimized content with AI</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button type="button" className="btn btn-ghost"><Eye className="w-4 h-4" />Preview</button>
-          <button type="button" className="btn btn-primary"><Save className="w-4 h-4" />Save</button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-[var(--color-text)]">İçerik Stüdyosu</h1>
+        <p className="text-[var(--color-text-muted)] mt-1">AI ile SEO uyumlu içerik üretin</p>
       </div>
 
-      {/* Title */}
-      <div className="bg-surface-alt border border-border rounded-xl p-4">
-        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter title..." className="w-full bg-transparent text-xl font-bold text-text placeholder:text-text-muted focus:outline-none" />
+      {/* Tabs */}
+      <div className="border-b border-[var(--color-border)]">
+        <nav className="flex gap-6" aria-label="Tabs">
+          <button
+            type="button"
+            onClick={() => setActiveTab('content')}
+            className={`flex items-center gap-2 pb-3 text-sm font-medium transition-colors relative ${
+              activeTab === 'content'
+                ? 'text-[var(--color-primary-400)]'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+            }`}
+          >
+            <PenTool className="w-4 h-4" />
+            İçerik
+            {activeTab === 'content' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-primary-400)]" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('images')}
+            className={`flex items-center gap-2 pb-3 text-sm font-medium transition-colors relative ${
+              activeTab === 'images'
+                ? 'text-[var(--color-primary-400)]'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+            }`}
+          >
+            <ImageIcon className="w-4 h-4" />
+            Görsel Arama
+            {featuredImage && (
+              <span className="ml-1.5 w-2 h-2 bg-[var(--color-accent-400)] rounded-full" />
+            )}
+            {activeTab === 'images' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-primary-400)]" />
+            )}
+          </button>
+        </nav>
       </div>
 
-      {/* Featured Image */}
-      <div className="bg-surface-alt border border-border rounded-xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-medium text-text">Featured Image</h3>
-          <button type="button" onClick={() => setShowImageSearch(!showImageSearch)} className="text-sm text-primary-400 hover:text-primary-300 flex items-center gap-1"><ImageIcon className="w-4 h-4" />{featuredImage ? 'Change' : 'Select Image'}</button>
-        </div>
-        {featuredImage ? (
-          <div className="relative rounded-lg overflow-hidden">
-            <img src={featuredImage.url} alt={featuredImage.alt || 'Featured'} className="w-full h-48 object-cover" />
-            <button type="button" onClick={() => setFeaturedImage(null)} className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white hover:bg-black/70 cursor-pointer"><X className="w-4 h-4" /></button>
-            <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60"><ImageAttribution image={featuredImage} /></div>
-          </div>
-        ) : showImageSearch ? null : (
-          <div onClick={() => setShowImageSearch(true)} className="border-2 border-dashed border-border rounded-lg h-32 flex items-center justify-center cursor-pointer hover:border-primary-400">Click to add featured image</div>
-        )}
-      </div>
-
-      {/* Image Search Modal */}
-      {showImageSearch && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-surface rounded-xl w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="text-lg font-semibold text-text">Search Images</h2>
-              <button type="button" onClick={() => setShowImageSearch(false)} className="p-2 text-text-muted hover:text-text cursor-pointer"><X className="w-5 h-5" /></button>
+      {/* Content Tab */}
+      {activeTab === 'content' && (
+        <div className="space-y-6">
+          {/* Featured Image Summary */}
+          {featuredImage && featuredImageAttribution && (
+            <div className="p-4 bg-[var(--color-surface-alt)] border border-[var(--color-border)] rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={featuredImage.urls.thumb}
+                    alt={featuredImage.alt_description || 'Öne çıkan görsel'}
+                    className="w-16 h-12 object-cover rounded-md"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-[var(--color-text)]">Öne Çıkan Görsel Seçildi</p>
+                    <p
+                      className="text-xs text-[var(--color-text-muted)]"
+                      dangerouslySetInnerHTML={{ __html: featuredImageAttribution.attribution }}
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('images')}
+                  className="text-sm text-[var(--color-primary-400)] hover:text-[var(--color-primary-300)] transition-colors"
+                >
+                  Değiştir
+                </button>
+              </div>
             </div>
-            <div className="p-4 overflow-y-auto flex-1"><ImageSearch onSelect={handleImageSelect} /></div>
+          )}
+
+          {/* Content Generation Placeholder */}
+          <div className="bg-[var(--color-surface-alt)] border border-[var(--color-border)] rounded-xl p-12 text-center">
+            <div className="w-16 h-16 bg-[var(--color-primary-400)]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-8 h-8 text-[var(--color-primary-400)]" />
+            </div>
+            <h3 className="text-lg font-medium text-[var(--color-text)]">AI İçerik Üretimi</h3>
+            <p className="text-[var(--color-text-muted)] mt-1">Yakında aktif olacak</p>
           </div>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-border">
-        <button type="button" onClick={() => setActiveTab('write')} className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px ${activeTab === 'write' ? 'text-primary-400 border-primary-400' : 'text-text-muted border-transparent hover:text-text'}`}>Write</button>
-        <button type="button" onClick={() => setActiveTab('preview')} className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px ${activeTab === 'preview' ? 'text-primary-400 border-primary-400' : 'text-text-muted border-transparent hover:text-text'}`}>Preview</button>
-      </div>
+      {/* Images Tab */}
+      {activeTab === 'images' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-medium text-[var(--color-text)]">Unsplash Görsel Arama</h2>
+              <p className="text-sm text-[var(--color-text-muted)]">Yüksek kaliteli ücretsiz görseller arayın ve öne çıkan görsel olarak ayarlayın</p>
+            </div>
+          </div>
 
-      {/* Editor / Preview */}
-      {activeTab === 'write' ? <TipTapEditor content={content} onChange={setContent} placeholder="Start writing..." /> : <div className="bg-surface-alt border border-border rounded-xl p-6 min-h-[400px] prose prose-invert" dangerouslySetInnerHTML={{ __html: content || '<p class="text-text-muted">No content yet</p>' }} />}
+          <ImageSearch
+            onSelect={handleImageSelect}
+            selectedImageId={featuredImage?.id}
+          />
 
-      {/* AI Assist */}
-      <div className="bg-surface-alt border border-border rounded-xl p-4">
-        <button type="button" className="flex items-center gap-2 text-primary-400 hover:text-primary-300 cursor-pointer"><Sparkles className="w-4 h-4" /><span className="text-sm font-medium">Generate with AI</span></button>
-      </div>
+          {/* Selected Image Info */}
+          {featuredImage && featuredImageAttribution && (
+            <div className="mt-6 p-4 bg-[var(--color-accent-400)]/10 border border-[var(--color-accent-400)]/20 rounded-lg">
+              <p className="text-sm text-[var(--color-text)]">
+                Bu görsel öne çıkan görsel olarak ayarlandı. İçerik yayınlandığında görsel URL'si otomatik olarak kullanılacak.
+              </p>
+              <div className="mt-2 p-2 bg-[var(--color-surface)] rounded font-mono text-xs text-[var(--color-text-muted)] break-all">
+                {featuredImage.urls.regular}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

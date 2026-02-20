@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { UnsplashImage, ImageAttribution } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -33,5 +34,28 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Image API methods
+export const imageApi = {
+  search: async (params: {
+    q: string;
+    page?: number;
+    per_page?: number;
+    orientation?: 'landscape' | 'portrait' | 'squarish';
+  }) => {
+    const response = await api.get('/images/search', { params });
+    return response.data as { data: UnsplashImage[]; meta: { total: number; total_pages: number; page: number; per_page: number } };
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/images/${id}`);
+    return response.data as { data: UnsplashImage };
+  },
+
+  getAttribution: async (id: string, format: 'html' | 'text' = 'html') => {
+    const response = await api.get(`/images/${id}/attribution`, { params: { format } });
+    return response.data as { data: ImageAttribution };
+  },
+};
 
 export default api;

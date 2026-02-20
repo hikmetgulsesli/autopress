@@ -43,3 +43,39 @@ export interface Keyword {
   trend_score: number;
   last_checked: string;
 }
+
+export interface UnsplashImage {
+  id: string;
+  urls: {
+    raw: string;
+    full: string;
+    regular: string;
+    small: string;
+    thumb: string;
+  };
+  alt_description: string | null;
+  description: string | null;
+  user: {
+    id: string;
+    name: string;
+    username: string;
+    portfolio_url: string | null;
+  };
+  links: {
+    html: string;
+  };
+  width: number;
+  height: number;
+  color: string | null;
+}
+
+export interface ImageAttribution {
+  photo_id: string;
+  attribution: string;
+  photographer: {
+    name: string;
+    username: string;
+    link: string;
+  };
+  unsplash_link: string;
+}
