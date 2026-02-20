@@ -565,3 +565,23 @@ export const listPosts = async (
     throw new BloggerError('LIST_POSTS_FAILED', `Failed to list posts: ${errorMessage}`, statusCode || 500);
   }
 };
+
+/**
+ * Test connection to Blogger
+ */
+export const testConnection = async (tokens: BloggerTokens): Promise<{ success: boolean; message: string }> => {
+  try {
+    setCredentials(tokens);
+    // Try to list blogs as a lightweight test
+    await listBlogs();
+    return { success: true, message: 'Blogger connection successful' };
+  } catch (error: any) {
+    if (error.code === 'AUTH_ERROR' || error.code === 'OAUTH_NOT_INITIALIZED') {
+      return { success: false, message: 'Invalid or expired Blogger OAuth tokens' };
+    }
+    if (error.code === 'FORBIDDEN') {
+      return { success: false, message: 'Access denied to Blogger API' };
+    }
+    return { success: false, message: `Connection failed: ${error.message || 'Unknown error'}` };
+  }
+};

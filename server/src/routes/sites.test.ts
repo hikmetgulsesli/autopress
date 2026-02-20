@@ -1,156 +1,267 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
+import sitesRouter from './sites';
 
-describe('Sites API - Credentials Structure', () => {
-  it('should validate WordPress credentials structure', () => {
-    const wordpressCreds = {
-      site_url: 'https://ornek.com',
-      username: 'admin',
-      app_password: 'abcd efgh ijkl mnop qrst uvwx'
-    };
+// Mock the database
+vi.mock('../db/connection', () => ({
+  query: vi.fn(),
+}));
 
-    // Validate required fields exist
-    expect(wordpressCreds).toHaveProperty('site_url');
-    expect(wordpressCreds).toHaveProperty('username');
-    expect(wordpressCreds).toHaveProperty('app_password');
-    
-    // Validate types
-    expect(typeof wordpressCreds.site_url).toBe('string');
-    expect(typeof wordpressCreds.username).toBe('string');
-    expect(typeof wordpressCreds.app_password).toBe('string');
-    
-    // Validate URL format
-    expect(wordpressCreds.site_url).toMatch(/^https?:\/\//);
+// Mock the auth middleware
+vi.mock('../middleware/auth', () => ({
+  authenticate: (_req: any, _res: any, next: any) => next(),
+  AuthRequest: class AuthRequest {},
+}));
+
+// Mock WordPress service
+vi.mock('../services/wordpress.service', () => ({
+  testConnection: vi.fn(),
+}));
+
+// Mock Blogger service
+vi.mock('../services/blogger.service', () => ({
+  testConnection: vi.fn(),
+}));
+
+import { query } from '../db/connection';
+import { testConnection as testWordPressConnection } from '../services/wordpress.service';
+import { testConnection as testBloggerConnection } from '../services/blogger.service';
+
+const mockedQuery = vi.mocked(query);
+const mockedTestWordPressConnection = vi.mocked(testWordPressConnection);
+const mockedTestBloggerConnection = vi.mocked(testBloggerConnection);
+
+describe('Sites Routes - Test Connection', () => {
+  let app: express.Application;
+
+  beforeEach(() => {
+    app = express();
+    app.use(express.json());
+    app.use('/api/sites', sitesRouter);
+    vi.clearAllMocks();
   });
 
-  it('should validate Blogger credentials structure', () => {
-    const bloggerCreds = {
-      client_id: '123456789.apps.googleusercontent.com',
-      client_secret: 'GOCSPX-secretkey',
-      oauth_token: 'ya29.a0AfH6SMBx...',
-      oauth_refresh_token: '1//04d...',
-      oauth_expires_at: '2024-12-31T23:59:59Z'
-    };
-
-    // Validate required fields exist
-    expect(bloggerCreds).toHaveProperty('client_id');
-    expect(bloggerCreds).toHaveProperty('client_secret');
-    
-    // Validate optional OAuth fields
-    expect(bloggerCreds).toHaveProperty('oauth_token');
-    expect(bloggerCreds).toHaveProperty('oauth_refresh_token');
-    expect(bloggerCreds).toHaveProperty('oauth_expires_at');
-    
-    // Validate client_id format (Google OAuth format)
-    expect(bloggerCreds.client_id).toMatch(/\.apps\.googleusercontent\.com$/);
+  afterEach(() => {
+    vi.resetAllMocks();
   });
 
-  it('should store credentials in api_credentials JSON structure', () => {
-    const apiCredentials = {
-      wordpress: {
-        site_url: 'https://ornek.com',
-        username: 'admin',
-        app_password: 'secret123'
-      }
-    };
+  describe('POST /api/sites/:id/test-connection', () => {
+    it('should return 404 if site not found', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [] } as any);
 
-    // Should be serializable to JSON
-    const serialized = JSON.stringify(apiCredentials);
-    expect(() => JSON.parse(serialized)).not.toThrow();
-    
-    // Should deserialize correctly
-    const deserialized = JSON.parse(serialized);
-    expect(deserialized.wordpress.site_url).toBe('https://ornek.com');
-    expect(deserialized.wordpress.username).toBe('admin');
-  });
+      const response = await request(app)
+        .post('/api/sites/999/test-connection')
+        .expect(404);
 
-  it('should handle both platform credentials in same structure', () => {
-    const apiCredentials = {
-      wordpress: {
-        site_url: 'https://wp-site.com',
-        username: 'admin',
-        app_password: 'wp-pass'
-      },
-      blogger: {
-        client_id: 'client.apps.googleusercontent.com',
-        client_secret: 'blogger-secret'
-      }
-    };
+      expect(response.body.error).toBe('Site bulunamadı');
+    });
 
-    expect(apiCredentials).toHaveProperty('wordpress');
-    expect(apiCredentials).toHaveProperty('blogger');
-    expect(apiCredentials.wordpress).toHaveProperty('site_url');
-    expect(apiCredentials.blogger).toHaveProperty('client_id');
-  });
-
-  it('should handle empty credentials object', () => {
-    const emptyCreds = {};
-    const serialized = JSON.stringify(emptyCreds);
-    expect(serialized).toBe('{}');
-    expect(JSON.parse(serialized)).toEqual({});
-  });
-
-  it('should validate site data with credentials', () => {
-    const siteData = {
-      name: 'Test WordPress Site',
-      domain: 'ornek.com',
-      platform: 'wordpress',
-      platform_id: 'https://ornek.com',
-      language: 'tr',
-      niche: 'teknoloji',
-      api_credentials: {
-        wordpress: {
-          site_url: 'https://ornek.com',
+    it('should test WordPress connection successfully', async () => {
+      const mockSite = {
+        id: 1,
+        name: 'Test WP Site',
+        platform: 'wordpress',
+        domain: 'https://example.com',
+        api_credentials: {
+          siteUrl: 'https://example.com',
           username: 'admin',
-          app_password: 'pass123'
-        }
-      }
-    };
+          applicationPassword: 'pass123',
+        },
+      };
 
-    // Required fields
-    expect(siteData.name).toBeDefined();
-    expect(siteData.platform).toBeDefined();
-    
-    // Platform validation
-    expect(['wordpress', 'blogger']).toContain(siteData.platform);
-    
-    // Credentials validation
-    expect(siteData.api_credentials).toBeDefined();
-    if (siteData.platform === 'wordpress') {
-      expect(siteData.api_credentials).toHaveProperty('wordpress');
-    }
-  });
+      mockedQuery.mockResolvedValueOnce({ rows: [mockSite] } as any);
+      mockedTestWordPressConnection.mockResolvedValueOnce({
+        success: true,
+        message: 'WordPress connection successful',
+      });
 
-  it('should mask password fields in form data', () => {
-    // Simulating form input type="password" behavior
-    const formInput = {
-      type: 'password',
-      value: 'secretpassword123'
-    };
+      const response = await request(app)
+        .post('/api/sites/1/test-connection')
+        .expect(200);
 
-    expect(formInput.type).toBe('password');
-    expect(formInput.value).toBe('secretpassword123');
-    // In actual browser, input type="password" masks the value
-  });
-});
+      expect(response.body).toEqual({
+        success: true,
+        message: 'WordPress connection successful',
+      });
+      expect(mockedTestWordPressConnection).toHaveBeenCalledWith({
+        siteUrl: 'https://example.com',
+        username: 'admin',
+        applicationPassword: 'pass123',
+      });
+    });
 
-describe('Sites API - HTTP Status Codes', () => {
-  it('should define correct status codes for credential operations', () => {
-    // Based on backend standards
-    const statusCodes = {
-      OK: 200,
-      CREATED: 201,
-      BAD_REQUEST: 400,
-      UNAUTHORIZED: 401,
-      NOT_FOUND: 404,
-      CONFLICT: 409,
-      INTERNAL_ERROR: 500
-    };
+    it('should test WordPress connection with failure', async () => {
+      const mockSite = {
+        id: 1,
+        name: 'Test WP Site',
+        platform: 'wordpress',
+        domain: 'https://example.com',
+        api_credentials: {
+          siteUrl: 'https://example.com',
+          username: 'admin',
+          applicationPassword: 'wrongpass',
+        },
+      };
 
-    expect(statusCodes.CREATED).toBe(201);
-    expect(statusCodes.BAD_REQUEST).toBe(400);
-    expect(statusCodes.NOT_FOUND).toBe(404);
-    expect(statusCodes.CONFLICT).toBe(409);
+      mockedQuery.mockResolvedValueOnce({ rows: [mockSite] } as any);
+      mockedTestWordPressConnection.mockResolvedValueOnce({
+        success: false,
+        message: 'Invalid WordPress credentials',
+      });
+
+      const response = await request(app)
+        .post('/api/sites/1/test-connection')
+        .expect(200);
+
+      expect(response.body).toEqual({
+        success: false,
+        message: 'Invalid WordPress credentials',
+      });
+    });
+
+    it('should test Blogger connection successfully', async () => {
+      const mockSite = {
+        id: 2,
+        name: 'Test Blogger Site',
+        platform: 'blogger',
+        domain: 'https://test.blogspot.com',
+        api_credentials: {
+          accessToken: 'valid-token',
+          refreshToken: 'refresh-token',
+          expiryDate: Date.now() + 3600000,
+        },
+      };
+
+      mockedQuery.mockResolvedValueOnce({ rows: [mockSite] } as any);
+      mockedTestBloggerConnection.mockResolvedValueOnce({
+        success: true,
+        message: 'Blogger connection successful',
+      });
+
+      const response = await request(app)
+        .post('/api/sites/2/test-connection')
+        .expect(200);
+
+      expect(response.body).toEqual({
+        success: true,
+        message: 'Blogger connection successful',
+      });
+      expect(mockedTestBloggerConnection).toHaveBeenCalledWith({
+        accessToken: 'valid-token',
+        refreshToken: 'refresh-token',
+        expiryDate: expect.any(Number),
+      });
+    });
+
+    it('should test Blogger connection with failure', async () => {
+      const mockSite = {
+        id: 2,
+        name: 'Test Blogger Site',
+        platform: 'blogger',
+        domain: 'https://test.blogspot.com',
+        api_credentials: {
+          accessToken: 'expired-token',
+          refreshToken: 'refresh-token',
+          expiryDate: Date.now() - 3600000,
+        },
+      };
+
+      mockedQuery.mockResolvedValueOnce({ rows: [mockSite] } as any);
+      mockedTestBloggerConnection.mockResolvedValueOnce({
+        success: false,
+        message: 'Invalid or expired Blogger OAuth tokens',
+      });
+
+      const response = await request(app)
+        .post('/api/sites/2/test-connection')
+        .expect(200);
+
+      expect(response.body).toEqual({
+        success: false,
+        message: 'Invalid or expired Blogger OAuth tokens',
+      });
+    });
+
+    it('should return 400 for unsupported platform', async () => {
+      const mockSite = {
+        id: 3,
+        name: 'Test Unknown Site',
+        platform: 'unknown',
+        domain: 'https://unknown.com',
+        api_credentials: {},
+      };
+
+      mockedQuery.mockResolvedValueOnce({ rows: [mockSite] } as any);
+
+      const response = await request(app)
+        .post('/api/sites/3/test-connection')
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toContain('Unsupported platform');
+    });
+
+    it('should use domain as siteUrl fallback for WordPress', async () => {
+      const mockSite = {
+        id: 1,
+        name: 'Test WP Site',
+        platform: 'wordpress',
+        domain: 'https://example.com',
+        api_credentials: {
+          username: 'admin',
+          applicationPassword: 'pass123',
+        },
+      };
+
+      mockedQuery.mockResolvedValueOnce({ rows: [mockSite] } as any);
+      mockedTestWordPressConnection.mockResolvedValueOnce({
+        success: true,
+        message: 'WordPress connection successful',
+      });
+
+      await request(app)
+        .post('/api/sites/1/test-connection')
+        .expect(200);
+
+      expect(mockedTestWordPressConnection).toHaveBeenCalledWith({
+        siteUrl: 'https://example.com',
+        username: 'admin',
+        applicationPassword: 'pass123',
+      });
+    });
+
+    it('should handle missing api_credentials gracefully', async () => {
+      const mockSite = {
+        id: 1,
+        name: 'Test WP Site',
+        platform: 'wordpress',
+        domain: 'https://example.com',
+        api_credentials: null,
+      };
+
+      mockedQuery.mockResolvedValueOnce({ rows: [mockSite] } as any);
+      mockedTestWordPressConnection.mockResolvedValueOnce({
+        success: false,
+        message: 'WordPress username and application password are required',
+      });
+
+      const response = await request(app)
+        .post('/api/sites/1/test-connection')
+        .expect(200);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should handle database errors', async () => {
+      mockedQuery.mockRejectedValueOnce(new Error('Database error'));
+
+      const response = await request(app)
+        .post('/api/sites/1/test-connection')
+        .expect(500);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toBe('Database error');
+    });
   });
 });

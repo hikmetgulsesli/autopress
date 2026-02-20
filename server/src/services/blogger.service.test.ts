@@ -591,4 +591,52 @@ describe('Blogger Service', () => {
       }
     });
   });
+
+  describe('testConnection', () => {
+    it('should return success for valid tokens', async () => {
+      mockBlogsListByUser.mockResolvedValue({
+        data: {
+          items: [
+            { id: '123', name: 'Test Blog', url: 'https://test.blogspot.com' },
+          ],
+        },
+      });
+
+      initializeOAuth2Client(mockCredentials);
+
+      const { testConnection } = await import('./blogger.service');
+      const result = await testConnection(mockTokens);
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Blogger connection successful');
+    });
+
+    it('should return failure for auth error', async () => {
+      mockBlogsListByUser.mockRejectedValue({
+        response: { status: 401, data: { error: { message: 'Unauthorized' } } },
+      });
+
+      initializeOAuth2Client(mockCredentials);
+
+      const { testConnection } = await import('./blogger.service');
+      const result = await testConnection(mockTokens);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Invalid or expired');
+    });
+
+    it('should return failure for forbidden error', async () => {
+      mockBlogsListByUser.mockRejectedValue({
+        response: { status: 403, data: { error: { message: 'Forbidden' } } },
+      });
+
+      initializeOAuth2Client(mockCredentials);
+
+      const { testConnection } = await import('./blogger.service');
+      const result = await testConnection(mockTokens);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Access denied');
+    });
+  });
 });

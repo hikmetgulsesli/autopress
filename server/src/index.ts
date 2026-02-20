@@ -66,6 +66,17 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+// API 404 handler - must be after all API routes
+app.use('/api/*', (_req, res) => {
+  res.status(404).json({
+    error: {
+      code: 'NOT_FOUND',
+      message: 'API endpoint not found',
+      details: [],
+    },
+  });
+});
+
 app.use(errorHandler);
 
 app.listen(PORT, () => {

@@ -1,18 +1,80 @@
 import { useState, useEffect } from 'react';
+<<<<<<< HEAD
+import { useSearchParams } from 'react-router-dom';
+=======
+>>>>>>> origin/settings-trends
 import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle } from 'lucide-react';
 import { TipTapEditor } from '../components/TipTapEditor';
 import ImageSearch from '../components/ImageSearch';
 import ImageAttribution from '../components/ImageAttribution';
+<<<<<<< HEAD
+import api from '../services/api';
+import type { ImageSearchResult, Article } from '../types';
+=======
 import { useArticleLoader } from '../hooks/useArticleLoader';
 import type { ImageSearchResult } from '../types';
+>>>>>>> origin/settings-trends
 
 export default function ContentStudio() {
+  const [searchParams] = useSearchParams();
+  const articleId = searchParams.get('article');
+  
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isPreview, setIsPreview] = useState(false);
   const [featuredImage, setFeaturedImage] = useState<ImageSearchResult | null>(null);
   const [showImageSearch, setShowImageSearch] = useState(false);
   
+<<<<<<< HEAD
+  // Article loading states
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loadedArticle, setLoadedArticle] = useState<Article | null>(null);
+
+  // Fetch article from URL param
+  useEffect(() => {
+    if (!articleId) return;
+
+    const fetchArticle = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const response = await api.get<Article>(`/articles/${articleId}`);
+        const article = response.data;
+        
+        setLoadedArticle(article);
+        setTitle(article.title || '');
+        setContent(article.content || '');
+        
+        // Set featured image if available
+        if (article.featured_image_url) {
+          setFeaturedImage({
+            id: String(article.id),
+            url: article.featured_image_url,
+            thumbUrl: article.featured_image_url,
+            description: null,
+            altDescription: null,
+            width: 0,
+            height: 0,
+            photographer: { name: '', username: '', portfolioUrl: '' },
+            color: null,
+          });
+        }
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          setError('Makale bulunamadı');
+        } else {
+          setError(err.response?.data?.error || 'Makale yüklenirken bir hata oluştu');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchArticle();
+  }, [articleId]);
+=======
   const { article, isLoading, error } = useArticleLoader();
 
   // Load article data when fetched from URL param
@@ -22,6 +84,7 @@ export default function ContentStudio() {
       setContent(article.content || '');
     }
   }, [article]);
+>>>>>>> origin/settings-trends
 
   const handleSave = () => {
     // TODO: Save article to backend
@@ -71,7 +134,9 @@ export default function ContentStudio() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">İçerik Stüdyosu</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {loadedArticle ? 'Makale Düzenle' : 'İçerik Stüdyosu'}
+          </h1>
           <p className="text-dark-400 mt-1">AI ile SEO uyumlu içerik üretin</p>
         </div>
         <div className="flex items-center gap-2">
@@ -102,10 +167,31 @@ export default function ContentStudio() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content Column */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Title Input */}
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 text-primary-400 animate-spin" style={{ color: 'var(--color-primary-400)' }} />
+          <span className="ml-3 text-text-muted">Makale yükleniyor...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 bg-error/10 border border-error/30 rounded-xl" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+          <AlertCircle className="w-5 h-5 text-error flex-shrink-0" style={{ color: '#ef4444' }} />
+          <div>
+            <p className="font-medium text-error" style={{ color: '#ef4444' }}>Hata</p>
+            <p className="text-text-muted text-sm">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Content - hide when loading or error */}
+      {!isLoading && !error && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content Column */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Title Input */}
           <div className="space-y-2">
             <label htmlFor="article-title" className="block text-sm font-medium text-text">
               Başlık
@@ -132,6 +218,7 @@ export default function ContentStudio() {
               />
             ) : (
               <TipTapEditor
+                key={articleId}
                 content={content}
                 onChange={setContent}
                 placeholder="Makale içeriğini yazmaya başlayın..."
@@ -247,6 +334,7 @@ export default function ContentStudio() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

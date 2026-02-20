@@ -54,20 +54,6 @@ export interface Site {
   niche: string;
   is_active: boolean;
   adsense_status?: 'approved' | 'pending' | 'rejected' | 'not_configured';
-  api_credentials?: {
-    wordpress?: {
-      site_url: string;
-      username: string;
-      app_password: string;
-    };
-    blogger?: {
-      client_id: string;
-      client_secret: string;
-      oauth_token?: string;
-      oauth_refresh_token?: string;
-      oauth_expires_at?: string;
-    };
-  };
 }
 
 export interface PublishHistory {
@@ -183,21 +169,38 @@ export interface LockedAccount {
   locked_until: string;
 }
 
-export interface UpdateProfileRequest {
+// API Keys Types
+export interface ApiKeys {
+  openai_api_key?: string;
+  unsplash_api_key?: string;
+  google_trends_api_key?: string;
+  search_console_client_id?: string;
+  search_console_client_secret?: string;
+  search_console_refresh_token?: string;
+}
+
+export interface ApiKeyField {
+  key: keyof ApiKeys;
+  label: string;
+  placeholder: string;
+  description?: string;
+}
+
+// General Settings Types
+export interface GeneralSettings {
+  language: string;
+  ai_model: string;
+  publish_jitter_minutes: number;
+  seo_min_words: number;
+}
+
+export interface LanguageOption {
+  code: string;
   name: string;
-  email: string;
-  avatar_url?: string;
 }
 
-export interface ChangePasswordRequest {
-  currentPassword: string;
-  newPassword: string;
-}
-
-export interface NotificationSettings {
-  emailEnabled: boolean;
-  pushEnabled: boolean;
-  notifyOnPublishSuccess: boolean;
-  notifyOnPublishFailed: boolean;
-  notifyOnTrendingTopic: boolean;
+export interface AIModelOption {
+  id: string;
+  name: string;
+  provider: string;
 }
