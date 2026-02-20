@@ -5,6 +5,8 @@ import { query } from '../db/connection';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { config, PASSWORD_REGEX } from '../config';
 import { logSecurityEvent } from '../services/audit.service';
+import { validateBody } from '../middleware/validate';
+import { updateProfileSchema, changePasswordSchema } from '../middleware/schemas';
 
 const router = Router();
 
@@ -209,6 +211,84 @@ router.post('/logout', authenticate, async (req: AuthRequest, res: Response) => 
     });
     
     res.json({ message: 'Çıkış yapıldı' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Profile update endpoint
+router.put('/profile', authenticate, validateBody(updateProfileSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    const { name } = req.body;
+    const userId = req.user!.id;
+
+    const result = await query(
+      'UPDATE users SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, email, name, role, created_at, updated_at',
+      [name, userId]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    }
+
+    await logSecurityEvent({
+      eventType: 'PROFILE_UPDATE',
+      userId,
+      ipAddress: getClientIp(req),
+      userAgent: getUserAgent(req),
+      details: { name },
+    });
+
+    res.json(result.rows[0]);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Change password endpoint
+router.put('/password', authenticate, validateBody(changePasswordSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user!.id;
+
+    // Get user with password hash
+    const userResult = await query('SELECT * FROM users WHERE id = $1', [userId]);
+    const user = userResult.rows[0];
+
+    if (!user) {
+      return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    }
+
+    // Verify current password
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) {
+      await logSecurityEvent({
+        eventType: 'PASSWORD_CHANGE_FAILURE',
+        userId,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+        details: { reason: 'Invalid current password' },
+      });
+      return res.status(400).json({ error: 'Mevcut şifre yanlış' });
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await query(
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [newPasswordHash, userId]
+    );
+
+    await logSecurityEvent({
+      eventType: 'PASSWORD_CHANGE_SUCCESS',
+      userId,
+      ipAddress: getClientIp(req),
+      userAgent: getUserAgent(req),
+    });
+
+    res.json({ message: 'Şifre başarıyla değiştirildi' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
