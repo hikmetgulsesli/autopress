@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
 import { query } from '../db/connection';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { testConnection as testWordPressConnection } from '../services/wordpress.service';
+import { testConnection as testBloggerConnection, BloggerTokens } from '../services/blogger.service';
 
 const router = Router();
 router.use(authenticate);
@@ -72,6 +74,64 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
     res.json({ message: 'Site silindi' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Test connection endpoint
+router.post('/:id/test-connection', async (req: AuthRequest, res: Response) => {
+  try {
+    // Get site details
+    const result = await query('SELECT * FROM sites WHERE id = $1', [req.params.id]);
+    if (!result.rows[0]) {
+      return res.status(404).json({ success: false, message: 'Site bulunamadı' });
+    }
+
+    const site = result.rows[0];
+    const platform = site.platform;
+    const credentials = site.api_credentials || {};
+
+    let connectionResult: { success: boolean; message: string };
+
+    if (platform === 'wordpress') {
+      // WordPress connection test
+      if (!credentials.siteUrl || !credentials.username || !credentials.applicationPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing WordPress credentials. Required: siteUrl, username, applicationPassword'
+        });
+      }
+
+      connectionResult = await testWordPressConnection({
+        siteUrl: credentials.siteUrl,
+        username: credentials.username,
+        applicationPassword: credentials.applicationPassword
+      });
+    } else if (platform === 'blogger') {
+      // Blogger connection test
+      if (!credentials.accessToken) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing Blogger access token'
+        });
+      }
+
+      const tokens: BloggerTokens = {
+        accessToken: credentials.accessToken,
+        refreshToken: credentials.refreshToken || '',
+        expiryDate: credentials.expiryDate || Date.now() + 3600 * 1000
+      };
+
+      connectionResult = await testBloggerConnection(tokens);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: `Unsupported platform: ${platform}`
+      });
+    }
+
+    res.json(connectionResult);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
