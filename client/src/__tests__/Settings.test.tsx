@@ -36,11 +36,11 @@ describe('Settings', () => {
     });
 
     // Check tabs are present
-    expect(screen.getByRole('tab', { name: 'Genel' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'API Anahtarları' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Genel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'API Anahtarları' })).toBeInTheDocument();
   });
 
-  it('displays API Keys tab by default', async () => {
+  it('displays API Keys tab content', async () => {
     mockApi.get.mockResolvedValue({ data: {} });
 
     render(
@@ -48,6 +48,9 @@ describe('Settings', () => {
         <Settings />
       </MemoryRouter>
     );
+
+    // Click API Keys tab
+    fireEvent.click(screen.getByRole('button', { name: 'API Anahtarları' }));
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'API Anahtarları' })).toBeInTheDocument();
@@ -72,6 +75,9 @@ describe('Settings', () => {
       </MemoryRouter>
     );
 
+    // Click API Keys tab
+    fireEvent.click(screen.getByRole('button', { name: 'API Anahtarları' }));
+
     await waitFor(() => {
       expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
     });
@@ -90,12 +96,15 @@ describe('Settings', () => {
       </MemoryRouter>
     );
 
+    // Click API Keys tab
+    fireEvent.click(screen.getByRole('button', { name: 'API Anahtarları' }));
+
     await waitFor(() => {
       expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
     });
 
     const openaiInput = screen.getByLabelText('OpenAI API Key') as HTMLInputElement;
-    const toggleButton = screen.getAllByRole('button', { name: /show|hide/i })[0];
+    const toggleButton = screen.getAllByRole('button', { name: /hide|show/i })[0];
 
     // Initially password type
     expect(openaiInput.type).toBe('password');
@@ -118,6 +127,9 @@ describe('Settings', () => {
         <Settings />
       </MemoryRouter>
     );
+
+    // Click API Keys tab
+    fireEvent.click(screen.getByRole('button', { name: 'API Anahtarları' }));
 
     await waitFor(() => {
       expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
@@ -148,6 +160,9 @@ describe('Settings', () => {
       </MemoryRouter>
     );
 
+    // Click API Keys tab
+    fireEvent.click(screen.getByRole('button', { name: 'API Anahtarları' }));
+
     await waitFor(() => {
       expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
     });
@@ -172,6 +187,9 @@ describe('Settings', () => {
       </MemoryRouter>
     );
 
+    // Click API Keys tab
+    fireEvent.click(screen.getByRole('button', { name: 'API Anahtarları' }));
+
     await waitFor(() => {
       expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
     });
@@ -189,6 +207,9 @@ describe('Settings', () => {
         <Settings />
       </MemoryRouter>
     );
+
+    // Click API Keys tab
+    fireEvent.click(screen.getByRole('button', { name: 'API Anahtarları' }));
 
     await waitFor(() => {
       expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
@@ -212,18 +233,18 @@ describe('Settings', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Genel' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Genel' })).toBeInTheDocument();
     });
 
     // Click General tab
-    fireEvent.click(screen.getByRole('tab', { name: 'Genel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Genel' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Genel Ayarlar' })).toBeInTheDocument();
+      expect(screen.getByText('Genel ayarlar yakında eklenecek')).toBeInTheDocument();
     });
 
     // Click API Keys tab
-    fireEvent.click(screen.getByRole('tab', { name: 'API Anahtarları' }));
+    fireEvent.click(screen.getByRole('button', { name: 'API Anahtarları' }));
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'API Anahtarları' })).toBeInTheDocument();
@@ -238,6 +259,9 @@ describe('Settings', () => {
         <Settings />
       </MemoryRouter>
     );
+
+    // Click API Keys tab
+    fireEvent.click(screen.getByRole('button', { name: 'API Anahtarları' }));
 
     await waitFor(() => {
       expect(screen.getByText('Güvenlik Notu')).toBeInTheDocument();
@@ -257,6 +281,9 @@ describe('Settings', () => {
       </MemoryRouter>
     );
 
+    // Click API Keys tab
+    fireEvent.click(screen.getByRole('button', { name: 'API Anahtarları' }));
+
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
@@ -269,6 +296,9 @@ describe('Settings', () => {
         <Settings />
       </MemoryRouter>
     );
+
+    // Click API Keys tab
+    fireEvent.click(screen.getByRole('button', { name: 'API Anahtarları' }));
 
     await waitFor(() => {
       expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
@@ -294,6 +324,9 @@ describe('Settings', () => {
         <Settings />
       </MemoryRouter>
     );
+
+    // Click API Keys tab
+    fireEvent.click(screen.getByRole('button', { name: 'API Anahtarları' }));
 
     await waitFor(() => {
       expect(screen.getByText(/Ayarlar yüklenirken bir hata oluştu/i)).toBeInTheDocument();

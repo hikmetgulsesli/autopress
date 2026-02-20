@@ -182,3 +182,29 @@ export interface LockedAccount {
   failed_login_attempts: number;
   locked_until: string;
 }
+
+export interface UpdateProfileRequest {
+  name: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface NotificationSettings {
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  notifyOnPublishSuccess: boolean;
+  notifyOnPublishFailed: boolean;
+  notifyOnTrendingTopic: boolean;
+}
+
+export interface ApiKeys {
+  openai_api_key?: string;
+  unsplash_api_key?: string;
+  google_trends_api_key?: string;
+  search_console_client_id?: string;
+  search_console_client_secret?: string;
+  search_console_refresh_token?: string;
+}
