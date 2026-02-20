@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { query } from '../db/connection';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { scheduleArticle, cancelScheduledArticle, PublishQueueItem } from '../services/scheduler.service';
 
 const router = Router();
 router.use(authenticate);
@@ -63,9 +64,9 @@ router.get('/schedules', async (_req: AuthRequest, res: Response) => {
   }
 });
 
-// Schedule an article for publishing
+// Schedule an article for publishing - uses scheduler.service for unified scheduling pipeline
 router.post('/schedule', async (req: AuthRequest, res: Response) => {
-  const { articleId, siteId, platform, scheduledAt } = req.body;
+  const { articleId, siteId, platform, scheduledAt, timezone, enableJitter } = req.body;
 
   if (!articleId || !siteId || !platform || !scheduledAt) {
     res.status(400).json({ 
@@ -88,31 +89,40 @@ router.post('/schedule', async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    // Update article status to scheduled
-    await query(
-      `UPDATE articles 
-       SET status = 'scheduled', 
-           site_id = $1, 
-           published_at = $2,
-           updated_at = NOW()
-       WHERE id = $3`,
-      [siteId, scheduledAt, articleId]
-    );
-
-    // Add to publish history as pending
-    await query(
-      `INSERT INTO publish_history 
-       (article_id, site_id, platform, status, published_at)
-       VALUES ($1, $2, $3, 'pending', $4)`,
-      [articleId, siteId, platform, scheduledAt]
+    // Use scheduler.service for unified scheduling - handles jitter, publish_queue insert, and article status update
+    const scheduledItem: PublishQueueItem = await scheduleArticle(
+      articleId,
+      siteId,
+      new Date(scheduledAt),
+      timezone || 'Europe/Istanbul',
+      enableJitter !== false, // default true
+      15 // maxJitterMinutes
     );
 
     res.status(201).json({ 
       success: true,
-      message: 'Makale başarıyla zamanlandı'
+      message: 'Makale başarıyla zamanlandı',
+      data: {
+        queueId: scheduledItem.id,
+        articleId: scheduledItem.article_id,
+        siteId: scheduledItem.site_id,
+        scheduledAt: scheduledItem.scheduled_at,
+        jitterMinutes: scheduledItem.jitter_minutes,
+        status: scheduledItem.status
+      }
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    // Handle typed errors from scheduler service
+    if (err.code === 'SCHEDULE_ERROR') {
+      res.status(500).json({ 
+        error: {
+          code: err.code,
+          message: err.message
+        }
+      });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
   }
 });
 
