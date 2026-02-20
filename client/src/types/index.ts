@@ -204,3 +204,11 @@ export interface AIModelOption {
   name: string;
   provider: string;
 }
+
+export interface NotificationSettings {
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  notifyOnPublishSuccess: boolean;
+  notifyOnPublishFailed: boolean;
+  notifyOnTrendingTopic: boolean;
+}
