@@ -254,6 +254,7 @@ const updateArticleStatus = async (
  */
 export const publishArticle = async (queueItem: PublishQueueItem): Promise<void> => {
   const { id: queueId, article_id, site_id, attempts, max_attempts } = queueItem;
+  let platform = 'unknown';
 
   try {
     // Set status to publishing
@@ -275,7 +276,7 @@ export const publishArticle = async (queueItem: PublishQueueItem): Promise<void>
       throw new Error(`Site ${site_id} not found`);
     }
 
-    const platform = site.platform.toLowerCase();
+    platform = site.platform.toLowerCase();
 
     // Publish based on platform
     let platformPostId: string;
@@ -291,6 +292,16 @@ export const publishArticle = async (queueItem: PublishQueueItem): Promise<void>
         refreshToken: string;
         expiryDate?: number;
       };
+
+      // Validate Blogger credentials
+      if (
+        !credentials ||
+        typeof credentials.blogId !== 'string' ||
+        typeof credentials.accessToken !== 'string' ||
+        typeof credentials.refreshToken !== 'string'
+      ) {
+        throw new Error(`Invalid Blogger credentials for site ${site_id}`);
+      }
 
       // Set Blogger credentials
       bloggerService.setCredentials({
@@ -359,6 +370,16 @@ export const publishArticle = async (queueItem: PublishQueueItem): Promise<void>
         applicationPassword: string;
       };
 
+      // Validate WordPress credentials
+      if (
+        !credentials ||
+        typeof credentials.siteUrl !== 'string' ||
+        typeof credentials.username !== 'string' ||
+        typeof credentials.applicationPassword !== 'string'
+      ) {
+        throw new Error(`Invalid WordPress credentials for site ${site_id}`);
+      }
+
       // Prepare post data
       const postData: wordpressService.WordPressPost = {
         title: article.title,
@@ -368,8 +389,8 @@ export const publishArticle = async (queueItem: PublishQueueItem): Promise<void>
         status: 'publish',
       };
 
-      // Publish to WordPress (uses internal config, not passed credentials)
-      const result = await wordpressService.publishPost(article_id, postData);
+      // Publish to WordPress
+      const result = await wordpressService.publishPostWithConfig(article_id, postData, credentials);
 
       platformPostId = result.wordpressId.toString();
       publishedUrl = result.wordpressUrl;
@@ -416,15 +437,6 @@ export const publishArticle = async (queueItem: PublishQueueItem): Promise<void>
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
     const newAttempts = attempts + 1;
-
-    // Determine platform for logging
-    let platform = 'unknown';
-    if (site_id) {
-      const site = await getSiteForPublish(site_id);
-      if (site) {
-        platform = site.platform.toLowerCase();
-      }
-    }
 
     // Determine if we should retry
     if (newAttempts >= max_attempts) {
