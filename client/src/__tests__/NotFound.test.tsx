@@ -80,48 +80,62 @@ describe('NotFound Component', () => {
 });
 
 describe('App 404 Routing', () => {
+  const mockCheckAuth = vi.fn();
+  
   beforeEach(() => {
-    vi.mocked(useAuthStore).mockReturnValue({
-      isAuthenticated: true,
-      user: { id: 1, email: 'test@example.com', username: 'testuser' },
-      login: vi.fn(),
-      logout: vi.fn(),
-      checkAuth: vi.fn(),
+    vi.clearAllMocks();
+    vi.mocked(useAuthStore).mockImplementation((selector) => {
+      const state = {
+        isAuthenticated: true,
+        user: { id: 1, email: 'test@example.com', username: 'testuser' },
+        isLoading: false,
+        login: vi.fn(),
+        logout: vi.fn(),
+        checkAuth: mockCheckAuth,
+      };
+      return selector ? selector(state) : state;
     });
+    mockCheckAuth.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it('shows NotFound for invalid routes when authenticated', () => {
+  it('shows NotFound for invalid routes when authenticated', async () => {
     render(
       <MemoryRouter initialEntries={['/invalid-route']}>
         <App />
       </MemoryRouter>
     );
 
-    expect(screen.getByText('404')).toBeInTheDocument();
-    expect(screen.getByText('Sayfa Bulunamadi')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('404')).toBeInTheDocument();
+      expect(screen.getByText('Sayfa Bulunamadi')).toBeInTheDocument();
+    });
   });
 
-  it('shows NotFound for deeply nested invalid routes', () => {
+  it('shows NotFound for deeply nested invalid routes', async () => {
     render(
       <MemoryRouter initialEntries={['/sites/invalid/path']}>
         <App />
       </MemoryRouter>
     );
 
-    expect(screen.getByText('404')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('404')).toBeInTheDocument();
+    });
   });
 
-  it('shows NotFound for routes with special characters', () => {
+  it('shows NotFound for routes with special characters', async () => {
     render(
       <MemoryRouter initialEntries={['/test%20path?query=value']}>
         <App />
       </MemoryRouter>
     );
 
-    expect(screen.getByText('404')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('404')).toBeInTheDocument();
+    });
   });
 });
