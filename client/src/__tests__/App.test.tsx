@@ -108,8 +108,9 @@ describe('App - Auth Check on Mount', () => {
     );
 
     await waitFor(() => {
-      // Should show dashboard layout (has navigation)
-      expect(container.querySelector('nav')).toBeInTheDocument();
+      // Should show dashboard layout (has Sidebar with nav)
+      const sidebar = container.querySelector('[class*="flex"][class*="min-h-screen"]');
+      expect(sidebar).toBeInTheDocument();
     });
   });
 });
