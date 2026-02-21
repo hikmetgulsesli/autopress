@@ -19,6 +19,7 @@ vi.mock('../utils/logger', () => ({
 // Mock wordpress service
 vi.mock('../services/wordpress.service', () => ({
   publishPost: vi.fn(),
+  publishPostWithConfig: vi.fn(),
   WordPressPost: {},
 }));
 
@@ -351,16 +352,27 @@ describe('SchedulerService', () => {
         site_id: 1,
       };
 
+      const mockSite = {
+        id: 1,
+        platform: 'wordpress',
+        api_credentials: {
+          siteUrl: 'https://example.com',
+          username: 'admin',
+          applicationPassword: 'test-pass',
+        },
+      };
+
       (query as any)
         .mockResolvedValueOnce({ rows: mockArticles })  // getDueArticles
         .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (publishing)
         .mockResolvedValueOnce({ rows: [mockArticle] }) // getArticleForPublish
+        .mockResolvedValueOnce({ rows: [mockSite] })    // getSiteForPublish
         .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (published)
         .mockResolvedValueOnce({ rows: [] })            // updateArticleStatus
         .mockResolvedValueOnce({ rows: [] });           // logPublishHistory
 
-      const { publishPost } = await import('../services/wordpress.service');
-      (publishPost as any).mockResolvedValueOnce({
+      const { publishPostWithConfig } = await import('../services/wordpress.service');
+      (publishPostWithConfig as any).mockResolvedValueOnce({
         success: true,
         wordpressId: 123,
         wordpressUrl: 'https://example.com/post',
@@ -391,15 +403,26 @@ describe('SchedulerService', () => {
         site_id: 1,
       };
 
+      const mockSite = {
+        id: 1,
+        platform: 'wordpress',
+        api_credentials: {
+          siteUrl: 'https://example.com',
+          username: 'admin',
+          applicationPassword: 'test-pass',
+        },
+      };
+
       (query as any)
         .mockResolvedValueOnce({ rows: mockArticles })
         .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (publishing)
         .mockResolvedValueOnce({ rows: [mockArticle] }) // getArticleForPublish
+        .mockResolvedValueOnce({ rows: [mockSite] })    // getSiteForPublish
         .mockResolvedValueOnce({ rows: [] })            // updateQueueStatus (pending - retry)
         .mockResolvedValueOnce({ rows: [] });           // logPublishHistory
 
-      const { publishPost } = await import('../services/wordpress.service');
-      (publishPost as any).mockRejectedValueOnce(new Error('API Error'));
+      const { publishPostWithConfig } = await import('../services/wordpress.service');
+      (publishPostWithConfig as any).mockRejectedValueOnce(new Error('API Error'));
 
       const stats = await schedulerService.processQueue();
 
