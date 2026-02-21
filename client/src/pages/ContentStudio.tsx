@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle } from 'lucide-react';
+import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle, Globe, Languages } from 'lucide-react';
 import { TipTapEditor } from '../components/TipTapEditor';
 import ImageSearch from '../components/ImageSearch';
 import ImageAttribution from '../components/ImageAttribution';
 import api from '../services/api';
-import type { ImageSearchResult, Article } from '../types';
+import { notify } from '../utils/toast';
+import type { ImageSearchResult, Article, Site } from '../types';
 
 export default function ContentStudio() {
   const [searchParams] = useSearchParams();
@@ -17,6 +18,18 @@ export default function ContentStudio() {
   const [isPreview, setIsPreview] = useState(false);
   const [featuredImage, setFeaturedImage] = useState<ImageSearchResult | null>(null);
   const [showImageSearch, setShowImageSearch] = useState(false);
+  
+  // Site and Language Selection (US-007)
+  const [sites, setSites] = useState<Site[]>([]);
+  const [selectedSiteId, setSelectedSiteId] = useState<number | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('tr');
+  const [isLoadingSites, setIsLoadingSites] = useState(false);
+
+  // Available languages
+  const availableLanguages = [
+    { code: 'tr', name: 'Türkçe' },
+    { code: 'en', name: 'English' },
+  ];
   
   // Article loading states
   const [isLoading, setIsLoading] = useState(false);
@@ -74,9 +87,69 @@ export default function ContentStudio() {
     fetchArticle();
   }, [articleId]);
 
-  const handleSave = () => {
-    // TODO: Save article to backend
-    console.log('Saving article:', { title, content, featuredImage });
+  // Fetch user's sites on mount
+  useEffect(() => {
+    const fetchSites = async () => {
+      setIsLoadingSites(true);
+      try {
+        const response = await api.get<Site[]>('/sites');
+        setSites(response.data);
+        // Set default to first site if available
+        if (response.data.length > 0 && !selectedSiteId) {
+          setSelectedSiteId(response.data[0].id);
+          // Also set language from site default
+          if (response.data[0].language) {
+            setSelectedLanguage(response.data[0].language);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch sites:', err);
+      } finally {
+        setIsLoadingSites(false);
+      }
+    };
+
+    fetchSites();
+  }, []);
+
+  // Load article's site and language when article is loaded
+  useEffect(() => {
+    if (loadedArticle) {
+      if (loadedArticle.site_id) {
+        setSelectedSiteId(loadedArticle.site_id);
+      }
+      if (loadedArticle.language) {
+        setSelectedLanguage(loadedArticle.language);
+      }
+    }
+  }, [loadedArticle]);
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      notify.error('Lütfen bir başlık girin');
+      return;
+    }
+
+    const articleData = {
+      title,
+      content,
+      site_id: selectedSiteId,
+      language: selectedLanguage,
+      featured_image_url: featuredImage?.url || null,
+    };
+
+    try {
+      if (loadedArticle?.id) {
+        await api.put(`/articles/${loadedArticle.id}`, articleData);
+        notify.success('Makale başarıyla güncellendi');
+      } else {
+        await api.post('/articles', articleData);
+        notify.success('Makale başarıyla kaydedildi');
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'Bir hata oluştu';
+      notify.error(errorMessage);
+    }
   };
 
   const handleSelectImage = (image: ImageSearchResult) => {
@@ -121,11 +194,60 @@ export default function ContentStudio() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">
             {loadedArticle ? 'Makale Düzenle' : topicParam ? `Makale Oluştur: ${topicParam}` : 'İçerik Stüdyosu'}
           </h1>
           <p className="text-dark-400 mt-1">AI ile SEO uyumlu içerik üretin</p>
+          
+          {/* Site and Language Selection (US-007) */}
+          <div className="flex items-center gap-3 mt-4">
+            {/* Site Dropdown */}
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-text-muted" />
+              <select
+                id="site-select"
+                name="site"
+                aria-label="Site seçin"
+                value={selectedSiteId || ''}
+                onChange={(e) => setSelectedSiteId(Number(e.target.value))}
+                disabled={isLoadingSites}
+                className="px-3 py-2 bg-surface-alt border border-border rounded-lg text-text text-sm focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200 cursor-pointer min-w-[180px]"
+                style={{ backgroundColor: 'var(--color-surface-alt)', borderColor: 'var(--color-border)' }}
+              >
+                <option value="" disabled>Site seçin</option>
+                {sites.map((site) => (
+                  <option key={site.id} value={site.id}>
+                    {site.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Language Dropdown */}
+            <div className="flex items-center gap-2">
+              <Languages className="w-4 h-4 text-text-muted" />
+              <select
+                id="language-select"
+                name="language"
+                aria-label="Dil seçin"
+                value={selectedLanguage}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
+                className="px-3 py-2 bg-surface-alt border border-border rounded-lg text-text text-sm focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200 cursor-pointer min-w-[120px]"
+                style={{ backgroundColor: 'var(--color-surface-alt)', borderColor: 'var(--color-border)' }}
+              >
+                {availableLanguages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {isLoadingSites && (
+              <Loader2 className="w-4 h-4 text-text-muted animate-spin" />
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
