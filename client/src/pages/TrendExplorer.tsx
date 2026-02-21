@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { TrendingUp, Globe, AlertCircle, Loader2, Search, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { TrendingUp, Globe, AlertCircle, Loader2, FilePlus } from 'lucide-react';
 import api from '../services/api';
 
 interface Trend {
@@ -40,15 +41,14 @@ const REGIONS = [
 export default function TrendExplorer() {
   const [trends, setTrends] = useState<Trend[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
-  const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [creatingArticleId, setCreatingArticleId] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   const fetchTrends = useCallback(async (region: string) => {
     setLoading(true);
     setError(null);
-    setIsSearching(false);
     
     try {
       const params = new URLSearchParams();
@@ -70,60 +70,19 @@ export default function TrendExplorer() {
     }
   }, []);
 
-  const searchTrends = useCallback(async (keyword: string, region: string) => {
-    if (!keyword.trim()) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setIsSearching(true);
-    
-    try {
-      const params = new URLSearchParams();
-      params.append('keyword', keyword.trim());
-      if (region !== 'all') {
-        params.append('region', region);
-      }
-      params.append('limit', '50');
-      
-      const response = await api.get(`/trends/search?${params.toString()}`);
-      const data = response.data;
-      
-      // Handle both array response and wrapped response
-      const trendsData = Array.isArray(data) ? data : data.data || [];
-      setTrends(trendsData);
-    } catch (err: any) {
-      setError(err.response?.data?.error?.message || err.message || 'Trend araması yapılırken bir hata oluştu');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const clearSearch = useCallback(() => {
-    setSearchKeyword('');
-    setIsSearching(false);
-    fetchTrends(selectedRegion);
-  }, [selectedRegion, fetchTrends]);
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchKeyword.trim()) {
-      searchTrends(searchKeyword, selectedRegion);
-    }
-  };
-
-  const handleRegionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newRegion = e.target.value;
-    setSelectedRegion(newRegion);
-    if (isSearching && searchKeyword.trim()) {
-      searchTrends(searchKeyword, newRegion);
-    }
-  };
-
   useEffect(() => {
     fetchTrends(selectedRegion);
   }, [selectedRegion, fetchTrends]);
+
+  const handleRegionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedRegion(e.target.value);
+  };
+
+  const handleCreateArticle = (topic: string, trendId: number) => {
+    setCreatingArticleId(trendId);
+    // Navigate to ContentStudio with topic pre-filled
+    navigate(`/content?topic=${encodeURIComponent(topic)}`);
+  };
 
   const getNewsCount = (trend: Trend): number => {
     if (trend.raw_data && typeof trend.raw_data === 'object') {
@@ -178,45 +137,6 @@ export default function TrendExplorer() {
         </div>
       </div>
 
-      {/* Search Section */}
-      <div className="card p-4">
-        <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search 
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" 
-              aria-hidden="true" 
-            />
-            <input
-              type="text"
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              placeholder="Trend ara..."
-              className="input w-full pl-10 pr-10"
-              aria-label="Trend ara"
-              disabled={loading}
-            />
-            {searchKeyword && (
-              <button
-                type="button"
-                onClick={clearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-dark-700 focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none"
-                aria-label="Aramayı temizle"
-              >
-                <X className="w-4 h-4 text-dark-400 hover:text-white" aria-hidden="true" />
-              </button>
-            )}
-          </div>
-          <button
-            type="submit"
-            disabled={loading || !searchKeyword.trim()}
-            className="btn btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          >
-            <Search className="w-4 h-4" aria-hidden="true" />
-            Ara
-          </button>
-        </form>
-      </div>
-
       {/* Loading State */}
       {loading && (
         <div className="card p-12 text-center">
@@ -224,7 +144,7 @@ export default function TrendExplorer() {
             className="w-10 h-10 text-primary-400 mx-auto mb-4 animate-spin" 
             aria-hidden="true"
           />
-          <p className="text-dark-400">{isSearching ? 'Arama yapılıyor...' : 'Trendler yükleniyor...'}</p>
+          <p className="text-dark-400">Trendler yükleniyor...</p>
         </div>
       )}
 
@@ -241,8 +161,8 @@ export default function TrendExplorer() {
           <h3 className="text-lg font-medium text-white mb-2">Bir hata oluştu</h3>
           <p className="text-dark-400 mb-4">{error}</p>
           <button
-            onClick={() => isSearching ? searchTrends(searchKeyword, selectedRegion) : fetchTrends(selectedRegion)}
-            className="btn btn-primary cursor-pointer"
+            onClick={() => fetchTrends(selectedRegion)}
+            className="btn btn-primary"
           >
             Tekrar Dene
           </button>
@@ -255,15 +175,11 @@ export default function TrendExplorer() {
           <div className="w-16 h-16 bg-primary-400/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <TrendingUp className="w-8 h-8 text-primary-400" aria-hidden="true" />
           </div>
-          <h3 className="text-lg font-medium text-white mb-2">
-            {isSearching ? 'Arama sonucu bulunamadı' : 'Henüz trend yok'}
-          </h3>
+          <h3 className="text-lg font-medium text-white mb-2">Henüz trend yok</h3>
           <p className="text-dark-400">
-            {isSearching 
-              ? `"${searchKeyword}" için sonuç bulunamadı. Farklı bir anahtar kelime deneyin.`
-              : selectedRegion === 'all' 
-                ? 'Şu anda görüntülenecek trend bulunmuyor.' 
-                : 'Seçili bölge için henüz trend verisi bulunmuyor.'}
+            {selectedRegion === 'all' 
+              ? 'Şu anda görüntülenecek trend bulunmuyor.' 
+              : 'Seçili bölge için henüz trend verisi bulunmuyor.'}
           </p>
         </div>
       )}
@@ -272,14 +188,7 @@ export default function TrendExplorer() {
       {!loading && !error && trends.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between text-sm text-dark-400 px-1">
-            <span>
-              {trends.length} trend bulundu
-              {isSearching && searchKeyword && (
-                <span className="ml-2 text-primary-400">
-                  "{searchKeyword}" için arama sonuçları
-                </span>
-              )}
-            </span>
+            <span>{trends.length} trend bulundu</span>
             <span className="hidden sm:inline">Skor ve haber sayısına göre sıralandı</span>
           </div>
           
@@ -318,6 +227,23 @@ export default function TrendExplorer() {
                     
                     {/* Stats */}
                     <div className="flex items-center gap-3 sm:gap-6">
+                      {/* Create Article Button */}
+                      <button
+                        onClick={() => handleCreateArticle(trend.topic, trend.id)}
+                        disabled={creatingArticleId === trend.id}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none"
+                        aria-label={`${trend.topic} için makale oluştur`}
+                      >
+                        {creatingArticleId === trend.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <FilePlus className="w-4 h-4" aria-hidden="true" />
+                        )}
+                        <span className="hidden sm:inline text-sm font-medium">
+                          {creatingArticleId === trend.id ? 'Oluşturuluyor...' : 'Makale Oluştur'}
+                        </span>
+                      </button>
+
                       {/* News Count */}
                       <div className="text-right hidden sm:block">
                         <p className="text-xs text-dark-400 uppercase tracking-wide">Haber</p>
