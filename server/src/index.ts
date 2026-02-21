@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import path from 'path';
 import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
@@ -67,11 +68,19 @@ app.use('/api/*', (_req, res) => {
   });
 });
 
+// Serve client static files
+app.use(express.static(path.join(__dirname, '../../client/dist')));
+
+// SPA fallback - serve index.html for non-API routes
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+});
+
 app.use(errorHandler);
 
 app.listen(PORT, () => {
   logger.info(`AutoPress API running on port ${PORT}`);
-  
+
   // Start the scheduler cron job
   startScheduler();
   logger.info('Scheduler started');
