@@ -5,19 +5,23 @@ import {
   Settings as SettingsIcon, 
   Bell, 
   Shield,
+  Key,
   Mail,
   Smartphone,
   CheckCircle,
   XCircle,
   TrendingUp,
   Save,
-  Loader2
+  Loader2,
+  Eye,
+  EyeOff,
+  AlertCircle
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
 import type { UpdateProfileRequest, ChangePasswordRequest, NotificationSettings } from '../types';
 
-type TabId = 'profile' | 'general' | 'notifications' | 'security';
+type TabId = 'profile' | 'general' | 'api-keys' | 'notifications' | 'security';
 
 interface Tab {
   id: TabId;
@@ -28,6 +32,7 @@ interface Tab {
 const tabs: Tab[] = [
   { id: 'profile', label: 'Profil', icon: <User className="w-4 h-4" /> },
   { id: 'general', label: 'Genel', icon: <SettingsIcon className="w-4 h-4" /> },
+  { id: 'api-keys', label: 'API Anahtarları', icon: <Key className="w-4 h-4" /> },
   { id: 'notifications', label: 'Bildirimler', icon: <Bell className="w-4 h-4" /> },
   { id: 'security', label: 'Güvenlik', icon: <Shield className="w-4 h-4" /> },
 ];
@@ -223,6 +228,366 @@ function GeneralTab() {
   );
 }
 
+// API Key Input Component with show/hide toggle
+interface ApiKeyInputProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+function ApiKeyInput({ id, label, value, onChange, placeholder }: ApiKeyInputProps) {
+  const [showValue, setShowValue] = useState(false);
+
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium text-text mb-2">{label}</label>
+      <div className="relative">
+        <input
+          id={id}
+          type={showValue ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="input pr-10"
+          placeholder={placeholder || '••••••••'}
+          autoComplete="off"
+        />
+        <button
+          type="button"
+          onClick={() => setShowValue(!showValue)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 rounded cursor-pointer"
+          aria-label={showValue ? 'Hide' : 'Show'}
+        >
+          {showValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// API Keys Tab Component
+interface ApiKeySettings {
+  openai_api_key: string;
+  unsplash_api_key: string;
+  google_trends_api_key: string;
+  search_console_client_id: string;
+  search_console_client_secret: string;
+  search_console_refresh_token: string;
+}
+
+function ApiKeysTab() {
+  const [settings, setSettings] = useState<ApiKeySettings>({
+    openai_api_key: '',
+    unsplash_api_key: '',
+    google_trends_api_key: '',
+    search_console_client_id: '',
+    search_console_client_secret: '',
+    search_console_refresh_token: '',
+  });
+  const [originalSettings, setOriginalSettings] = useState<ApiKeySettings>({
+    openai_api_key: '',
+    unsplash_api_key: '',
+    google_trends_api_key: '',
+    search_console_client_id: '',
+    search_console_client_secret: '',
+    search_console_refresh_token: '',
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [savedIndicators, setSavedIndicators] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get('/settings');
+      const data = response.data;
+      const newSettings: ApiKeySettings = {
+        openai_api_key: data.openai_api_key || '',
+        unsplash_api_key: data.unsplash_api_key || '',
+        google_trends_api_key: data.google_trends_api_key || '',
+        search_console_client_id: data.search_console_client_id || '',
+        search_console_client_secret: data.search_console_client_secret || '',
+        search_console_refresh_token: data.search_console_refresh_token || '',
+      };
+      setSettings(newSettings);
+      setOriginalSettings(newSettings);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Ayarlar yüklenirken bir hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateSetting = (key: keyof ApiKeySettings, value: string) => {
+    setSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const saveKey = async (key: keyof ApiKeySettings) => {
+    try {
+      setSaving((prev) => ({ ...prev, [key]: true }));
+      setError(null);
+      await api.put(`/settings/${key}`, { value: settings[key], type: 'string' });
+      setOriginalSettings((prev) => ({ ...prev, [key]: settings[key] }));
+      setSavedIndicators((prev) => ({ ...prev, [key]: true }));
+      setTimeout(() => {
+        setSavedIndicators((prev) => ({ ...prev, [key]: false }));
+      }, 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || `${key} kaydedilirken bir hata oluştu`);
+    } finally {
+      setSaving((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const hasChanges = (key: keyof ApiKeySettings) => settings[key] !== originalSettings[key];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 text-primary-400 animate-spin" role="status" aria-label="Yükleniyor" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold text-text">API Anahtarları</h2>
+        <p className="text-text-muted mt-1">Harici servisler için API anahtarlarınızı yönetin</p>
+      </div>
+
+      {error && (
+        <div role="alert" className="bg-error/10 border border-error/20 rounded-lg p-4 flex items-center gap-3">
+          <XCircle className="w-5 h-5 text-error flex-shrink-0" />
+          <p className="text-error text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Security Note */}
+      <div className="bg-info/10 border border-info/20 rounded-lg p-4 flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
+        <div>
+          <h4 className="text-sm font-medium text-info">Güvenlik Notu</h4>
+          <p className="text-sm text-info/80 mt-1">
+            API anahtarları sunucuda güvenli bir şekilde saklanır. Anahtarlarınızı kimseyle paylaşmayın.
+          </p>
+        </div>
+      </div>
+
+      {/* OpenAI API Key */}
+      <section className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-text">OpenAI API Key</h3>
+            <p className="text-sm text-text-muted">Yapay zeka içerik üretimi için kullanılır</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {savedIndicators.openai_api_key && (
+              <span className="text-sm text-success flex items-center gap-1">
+                <CheckCircle className="w-4 h-4" />
+                Kaydedildi
+              </span>
+            )}
+            <button
+              onClick={() => saveKey('openai_api_key')}
+              disabled={saving.openai_api_key || !hasChanges('openai_api_key')}
+              className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+            >
+              {saving.openai_api_key ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /><span>Kaydediliyor...</span></>
+              ) : (
+                <><Save className="w-4 h-4" /><span>Kaydet</span></>
+              )}
+            </button>
+          </div>
+        </div>
+        <ApiKeyInput
+          id="openai_api_key"
+          label="OpenAI API Key"
+          value={settings.openai_api_key}
+          onChange={(value) => updateSetting('openai_api_key', value)}
+          placeholder="sk-..."
+        />
+      </section>
+
+      {/* Unsplash API Key */}
+      <section className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-text">Unsplash API Key</h3>
+            <p className="text-sm text-text-muted">Ücretsiz stok fotoğraflar için kullanılır</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {savedIndicators.unsplash_api_key && (
+              <span className="text-sm text-success flex items-center gap-1">
+                <CheckCircle className="w-4 h-4" />
+                Kaydedildi
+              </span>
+            )}
+            <button
+              onClick={() => saveKey('unsplash_api_key')}
+              disabled={saving.unsplash_api_key || !hasChanges('unsplash_api_key')}
+              className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+            >
+              {saving.unsplash_api_key ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /><span>Kaydediliyor...</span></>
+              ) : (
+                <><Save className="w-4 h-4" /><span>Kaydet</span></>
+              )}
+            </button>
+          </div>
+        </div>
+        <ApiKeyInput
+          id="unsplash_api_key"
+          label="Unsplash API Key"
+          value={settings.unsplash_api_key}
+          onChange={(value) => updateSetting('unsplash_api_key', value)}
+          placeholder="..."
+        />
+      </section>
+
+      {/* Google Trends API Key */}
+      <section className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-text">Google Trends API Key</h3>
+            <p className="text-sm text-text-muted">Trend analizi için kullanılır</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {savedIndicators.google_trends_api_key && (
+              <span className="text-sm text-success flex items-center gap-1">
+                <CheckCircle className="w-4 h-4" />
+                Kaydedildi
+              </span>
+            )}
+            <button
+              onClick={() => saveKey('google_trends_api_key')}
+              disabled={saving.google_trends_api_key || !hasChanges('google_trends_api_key')}
+              className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+            >
+              {saving.google_trends_api_key ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /><span>Kaydediliyor...</span></>
+              ) : (
+                <><Save className="w-4 h-4" /><span>Kaydet</span></>
+              )}
+            </button>
+          </div>
+        </div>
+        <ApiKeyInput
+          id="google_trends_api_key"
+          label="Google Trends API Key"
+          value={settings.google_trends_api_key}
+          onChange={(value) => updateSetting('google_trends_api_key', value)}
+          placeholder="..."
+        />
+      </section>
+
+      {/* Search Console Credentials */}
+      <section className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-text">Search Console Credentials</h3>
+            <p className="text-sm text-text-muted">Google Search Console entegrasyonu için kullanılır</p>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <ApiKeyInput
+              id="search_console_client_id"
+              label="Search Console Client ID"
+              value={settings.search_console_client_id}
+              onChange={(value) => updateSetting('search_console_client_id', value)}
+              placeholder="..."
+            />
+            <div className="flex items-center gap-2 ml-4 mt-6">
+              {savedIndicators.search_console_client_id && (
+                <span className="text-sm text-success flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" />
+                  Kaydedildi
+                </span>
+              )}
+              <button
+                onClick={() => saveKey('search_console_client_id')}
+                disabled={saving.search_console_client_id || !hasChanges('search_console_client_id')}
+                className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {saving.search_console_client_id ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /></>
+                ) : (
+                  <><Save className="w-4 h-4" /><span>Kaydet</span></>
+                )}
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <ApiKeyInput
+              id="search_console_client_secret"
+              label="Search Console Client Secret"
+              value={settings.search_console_client_secret}
+              onChange={(value) => updateSetting('search_console_client_secret', value)}
+              placeholder="..."
+            />
+            <div className="flex items-center gap-2 ml-4 mt-6">
+              {savedIndicators.search_console_client_secret && (
+                <span className="text-sm text-success flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" />
+                  Kaydedildi
+                </span>
+              )}
+              <button
+                onClick={() => saveKey('search_console_client_secret')}
+                disabled={saving.search_console_client_secret || !hasChanges('search_console_client_secret')}
+                className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {saving.search_console_client_secret ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /></>
+                ) : (
+                  <><Save className="w-4 h-4" /><span>Kaydet</span></>
+                )}
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <ApiKeyInput
+              id="search_console_refresh_token"
+              label="Search Console Refresh Token"
+              value={settings.search_console_refresh_token}
+              onChange={(value) => updateSetting('search_console_refresh_token', value)}
+              placeholder="..."
+            />
+            <div className="flex items-center gap-2 ml-4 mt-6">
+              {savedIndicators.search_console_refresh_token && (
+                <span className="text-sm text-success flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" />
+                  Kaydedildi
+                </span>
+              )}
+              <button
+                onClick={() => saveKey('search_console_refresh_token')}
+                disabled={saving.search_console_refresh_token || !hasChanges('search_console_refresh_token')}
+                className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {saving.search_console_refresh_token ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /></>
+                ) : (
+                  <><Save className="w-4 h-4" /><span>Kaydet</span></>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 // Notifications Tab Component
 function NotificationsTab() {
   const [settings, setSettings] = useState<NotificationSettings>({
@@ -339,15 +704,16 @@ function SecurityTab() {
 
 // Main Settings Page
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<TabId>('profile');
+  const [activeTab, setActiveTab] = useState<TabId>('api-keys');
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'profile': return <ProfileTab />;
       case 'general': return <GeneralTab />;
+      case 'api-keys': return <ApiKeysTab />;
       case 'notifications': return <NotificationsTab />;
       case 'security': return <SecurityTab />;
-      default: return <ProfileTab />;
+      default: return <ApiKeysTab />;
     }
   };
 
@@ -362,7 +728,13 @@ export default function Settings() {
           <ul className="space-y-1">
             {tabs.map((tab) => (
               <li key={tab.id}>
-                <button onClick={() => setActiveTab(tab.id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${activeTab === tab.id ? 'bg-primary-400/10 text-primary-400 border border-primary-400/20' : 'text-text-muted hover:text-text hover:bg-surface-alt'}`} aria-current={activeTab === tab.id ? 'page' : undefined}>
+                <button 
+                  onClick={() => setActiveTab(tab.id)} 
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${activeTab === tab.id ? 'bg-primary-400/10 text-primary-400 border border-primary-400/20' : 'text-text-muted hover:text-text hover:bg-surface-alt'}`} 
+                  aria-current={activeTab === tab.id ? 'page' : undefined}
+                >
                   {tab.icon}
                   {tab.label}
                 </button>
