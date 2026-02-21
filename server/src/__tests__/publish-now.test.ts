@@ -4,6 +4,35 @@ import express from 'express';
 import { query } from '../db/connection';
 import { logger } from '../utils/logger';
 import publishRoutes from '../routes/publish';
+import { QueryResult } from 'pg';
+
+interface ArticleData {
+  id: number;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  slug: string;
+  meta_title: string | null;
+  meta_description: string | null;
+  featured_image_url: string | null;
+  site_id: number;
+}
+
+interface SiteData {
+  id: number;
+  name: string;
+  domain?: string;
+  platform: string;
+  api_credentials: {
+    siteUrl?: string;
+    username?: string;
+    applicationPassword?: string;
+    blogId?: string;
+    accessToken?: string;
+    refreshToken?: string;
+    expiryDate?: number;
+  } | null;
+}
 
 // Mock dependencies
 vi.mock('../db/connection');
@@ -32,7 +61,7 @@ describe('Publish Now Integration - WordPress (US-005)', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('calls wordpress.service.publishPost for WordPress platform', async () => {
@@ -55,8 +84,8 @@ describe('Publish Now Integration - WordPress (US-005)', () => {
       platform: 'wordpress',
       api_credentials: {
         siteUrl: 'https://example.com',
-        username: 'admin',
-        applicationPassword: 'app-pass-123',
+        username: 'testuser',
+        applicationPassword: 'test-password',
       },
     };
 
@@ -204,7 +233,7 @@ describe('Publish Now Integration - WordPress (US-005)', () => {
       platform: 'wordpress',
       api_credentials: {
         siteUrl: 'https://example.com',
-        username: 'admin',
+        username: 'testuser',
         applicationPassword: 'wrong-password',
       },
     };
@@ -260,7 +289,7 @@ describe('Publish Now Integration - WordPress (US-005)', () => {
       .expect(400);
 
     expect(response.body.error.code).toBe('VALIDATION_ERROR');
-    expect(response.body.error.message).toContain('gereklidir');
+    expect(response.body.error.message).toContain('required');
   });
 });
 
@@ -270,7 +299,7 @@ describe('Publish Now Integration - Blogger (US-005)', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('calls blogger.service.publishPost for Blogger platform', async () => {
@@ -293,8 +322,8 @@ describe('Publish Now Integration - Blogger (US-005)', () => {
       platform: 'blogger',
       api_credentials: {
         blogId: '123456789',
-        accessToken: 'ya29.access-token',
-        refreshToken: 'refresh-token',
+        accessToken: 'test-access-token',
+        refreshToken: 'test-refresh-token',
         expiryDate: 1234567890,
       },
     };
@@ -568,7 +597,7 @@ describe('Publish Now - Error Handling (US-005)', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('logs API errors properly', async () => {
@@ -720,7 +749,7 @@ describe('Publish Now - Error Handling (US-005)', () => {
       .expect(200);
 
     expect(response.body.success).toBe(true);
-    expect(response.body.message).toContain('başarıyla yayınlandı');
+    expect(response.body.message).toContain('successfully published');
     expect(response.body.data.publishedUrl).toBe('https://wptest.com/wordpress-integration-test');
     expect(response.body.data.platformPostId).toBe('456');
   });
@@ -745,8 +774,8 @@ describe('Publish Now - Error Handling (US-005)', () => {
       platform: 'blogger',
       api_credentials: {
         blogId: '987654321',
-        accessToken: 'ya29.a0AfH6SMBa-access',
-        refreshToken: 'refresh-token-xyz',
+        accessToken: 'test-access-token',
+        refreshToken: 'test-refresh-token',
         expiryDate: 1234567890,
       },
     };
@@ -780,7 +809,7 @@ describe('Publish Now - Error Handling (US-005)', () => {
       .expect(200);
 
     expect(response.body.success).toBe(true);
-    expect(response.body.message).toContain('başarıyla yayınlandı');
+    expect(response.body.message).toContain('successfully published');
     expect(response.body.data.publishedUrl).toBe('https://blogtest.blogspot.com/2024/02/blogger-integration-test.html');
     expect(response.body.data.platformPostId).toBe('blogger-post-abc');
   });
