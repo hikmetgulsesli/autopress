@@ -447,3 +447,31 @@ export const testConnection = async (config: WordPressConfig): Promise<{ success
     return { success: false, message: `Connection failed: ${err.message || 'Unknown error'}` };
   }
 };
+
+// Create a WordPress post with custom config (for use with database-stored credentials)
+export const createPost = async (
+  config: WordPressConfig,
+  post: WordPressPost
+): Promise<WordPressPublishResult> => {
+  const wp = new WordPressClient(config);
+
+  try {
+    const result = await wp.createPost(post);
+
+    return {
+      success: true,
+      wordpressId: result.id,
+      wordpressUrl: result.link,
+      status: post.status,
+    };
+  } catch (err: any) {
+    // Re-throw the error with the same structure
+    if (err.code) {
+      throw err;
+    }
+    throw {
+      code: 'API_ERROR',
+      message: err.message || 'Failed to create post',
+    } as WordPressServiceError;
+  }
+};

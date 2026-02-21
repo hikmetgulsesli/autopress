@@ -1,6 +1,9 @@
 import { Router, Response } from 'express';
 import { query } from '../db/connection';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { createPost as createWordPressPost, WordPressConfig } from '../services/wordpress.service';
+import { publishPost as publishBloggerPost, setCredentials, PublishPostOptions } from '../services/blogger.service';
+import { logger } from '../utils/logger';
 
 const router = Router();
 router.use(authenticate);
@@ -223,10 +226,231 @@ router.post('/publish-now', async (req: AuthRequest, res: Response) => {
 
     const article = articleResult.rows[0];
 
-    // TODO: Integrate with actual WordPress/Blogger API
-    // For now, simulate publishing
+    // Get site credentials
+    const siteResult = await query(
+      'SELECT * FROM sites WHERE id = $1',
+      [siteId]
+    );
+
+    if (siteResult.rows.length === 0) {
+      res.status(404).json({ 
+        error: {
+          code: 'SITE_NOT_FOUND',
+          message: 'Site bulunamadı'
+        }
+      });
+      return;
+    }
+
+    const site = siteResult.rows[0];
+    const credentials = site.api_credentials || {};
+
+    let publishedUrl: string;
+    let platformPostId: string;
+
     const now = new Date().toISOString();
-    
+
+    if (platform === 'wordpress') {
+      // Validate WordPress credentials
+      if (!credentials.siteUrl || !credentials.username || !credentials.applicationPassword) {
+        logger.error(`Missing WordPress credentials for site ${siteId}`, {
+          siteId,
+          credentials: Object.keys(credentials)
+        });
+        res.status(400).json({
+          error: {
+            code: 'MISSING_CREDENTIALS',
+            message: 'WordPress credentials are required: siteUrl, username, and applicationPassword'
+          }
+        });
+        return;
+      }
+
+      const wpConfig: WordPressConfig = {
+        siteUrl: credentials.siteUrl,
+        username: credentials.username,
+        applicationPassword: credentials.applicationPassword,
+      };
+
+      try {
+        const wpResult = await createWordPressPost(wpConfig, {
+          title: article.title,
+          content: article.content,
+          excerpt: article.excerpt,
+          slug: article.slug,
+          status: 'publish',
+        });
+
+        publishedUrl = wpResult.wordpressUrl;
+        platformPostId = String(wpResult.wordpressId);
+
+        logger.info(`WordPress post published successfully`, {
+          articleId,
+          siteId,
+          wordpressId: wpResult.wordpressId,
+          url: publishedUrl
+        });
+      } catch (wpError: any) {
+        logger.error(`WordPress publish failed`, {
+          articleId,
+          siteId,
+          error: wpError.message,
+          code: wpError.code
+        });
+
+        // Handle specific WordPress errors
+        if (wpError.code === 'AUTH_ERROR') {
+          res.status(401).json({
+            error: {
+              code: 'AUTH_ERROR',
+              message: 'WordPress authentication failed. Check your credentials.'
+            }
+          });
+          return;
+        }
+
+        if (wpError.code === 'FORBIDDEN') {
+          res.status(403).json({
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Insufficient permissions to publish to WordPress.'
+            }
+          });
+          return;
+        }
+
+        if (wpError.code === 'API_ERROR') {
+          res.status(500).json({
+            error: {
+              code: 'API_ERROR',
+              message: `WordPress API error: ${wpError.message}`
+            }
+          });
+          return;
+        }
+
+        // Generic error
+        res.status(500).json({
+          error: {
+            code: 'PUBLISH_FAILED',
+            message: wpError.message || 'Failed to publish to WordPress'
+          }
+        });
+        return;
+      }
+    } else if (platform === 'blogger') {
+      // Validate Blogger credentials
+      if (!credentials.blogId || !credentials.accessToken || !credentials.refreshToken) {
+        logger.error(`Missing Blogger credentials for site ${siteId}`, {
+          siteId,
+          credentials: Object.keys(credentials)
+        });
+        res.status(400).json({
+          error: {
+            code: 'MISSING_CREDENTIALS',
+            message: 'Blogger credentials are required: blogId, accessToken, and refreshToken'
+          }
+        });
+        return;
+      }
+
+      try {
+        // Set Blogger OAuth credentials
+        const bloggerTokens = {
+          accessToken: credentials.accessToken,
+          refreshToken: credentials.refreshToken,
+          expiryDate: credentials.expiryDate || Date.now() + 3600 * 1000,
+        };
+        setCredentials(bloggerTokens);
+
+        // Publish to Blogger
+        const bloggerOptions: PublishPostOptions = {
+          blogId: credentials.blogId,
+          title: article.title,
+          content: article.content,
+          labels: [],
+          isDraft: false,
+        };
+
+        const bloggerResult = await publishBloggerPost(bloggerOptions, articleId, siteId);
+
+        publishedUrl = bloggerResult.url;
+        platformPostId = bloggerResult.id;
+
+        logger.info(`Blogger post published successfully`, {
+          articleId,
+          siteId,
+          postId: bloggerResult.id,
+          url: publishedUrl
+        });
+      } catch (bloggerError: any) {
+        logger.error(`Blogger publish failed`, {
+          articleId,
+          siteId,
+          error: bloggerError.message,
+          code: bloggerError.code
+        });
+
+        // Handle specific Blogger errors
+        if (bloggerError.code === 'AUTH_ERROR' || bloggerError.code === 'OAUTH_NOT_INITIALIZED') {
+          res.status(401).json({
+            error: {
+              code: 'AUTH_ERROR',
+              message: 'Blogger authentication failed. Please re-authenticate.'
+            }
+          });
+          return;
+        }
+
+        if (bloggerError.code === 'FORBIDDEN') {
+          res.status(403).json({
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Not authorized to publish to this Blogger blog.'
+            }
+          });
+          return;
+        }
+
+        if (bloggerError.code === 'BLOG_NOT_FOUND') {
+          res.status(404).json({
+            error: {
+              code: 'BLOG_NOT_FOUND',
+              message: 'Blogger blog not found. Check your blog ID.'
+            }
+          });
+          return;
+        }
+
+        if (bloggerError.code === 'INVALID_REQUEST') {
+          res.status(400).json({
+            error: {
+              code: 'INVALID_REQUEST',
+              message: `Invalid Blogger request: ${bloggerError.message}`
+            }
+          });
+          return;
+        }
+
+        // Generic error
+        res.status(500).json({
+          error: {
+            code: 'PUBLISH_FAILED',
+            message: bloggerError.message || 'Failed to publish to Blogger'
+          }
+        });
+        return;
+      }
+    } else {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_PLATFORM',
+          message: 'Invalid platform. Supported platforms: wordpress, blogger'
+        }
+      });
+      return;
+    }
+
     // Update article status
     await query(
       `UPDATE articles 
@@ -236,7 +460,7 @@ router.post('/publish-now', async (req: AuthRequest, res: Response) => {
            published_url = $3,
            updated_at = NOW()
        WHERE id = $4`,
-      [siteId, now, `https://example.com/${article.slug}`, articleId]
+      [siteId, now, publishedUrl, articleId]
     );
 
     // Add to publish history
@@ -244,7 +468,7 @@ router.post('/publish-now', async (req: AuthRequest, res: Response) => {
       `INSERT INTO publish_history 
        (article_id, site_id, platform, platform_post_id, status, published_at)
        VALUES ($1, $2, $3, $4, 'success', $5)`,
-      [articleId, siteId, platform, `post_${Date.now()}`, now]
+      [articleId, siteId, platform, platformPostId, now]
     );
 
     res.json({ 
@@ -252,11 +476,25 @@ router.post('/publish-now', async (req: AuthRequest, res: Response) => {
       message: 'Makale başarıyla yayınlandı',
       data: {
         articleId,
-        publishedUrl: `https://example.com/${article.slug}`
+        publishedUrl,
+        platformPostId,
+        publishedAt: now
       }
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error(`Unexpected error in /publish-now`, {
+      articleId,
+      siteId,
+      platform,
+      error: err.message,
+      stack: err.stack
+    });
+    res.status(500).json({ 
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err.message || 'An unexpected error occurred'
+      }
+    });
   }
 });
 
