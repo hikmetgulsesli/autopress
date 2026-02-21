@@ -23,7 +23,7 @@ describe('Health Check API', () => {
 
   describe('GET /api/health', () => {
     it('should return healthy status when DB responds', async () => {
-      mockQuery.mockResolvedValueOnce({ rows: [{ result: 1 }] });
+      mockQuery.mockResolvedValueOnce({ rows: [{ result: 1 }] } as any);
 
       const response = await request(app).get('/api/health');
 
@@ -39,7 +39,7 @@ describe('Health Check API', () => {
       // Simulate a slow DB query by taking longer than timeout
       mockQuery.mockImplementationOnce(() => {
         return new Promise((resolve) => {
-          setTimeout(() => resolve({ rows: [] }), 3000);
+          setTimeout(() => resolve({ rows: [] } as any), 3000);
         });
       });
 
@@ -82,7 +82,7 @@ describe('Health Check API', () => {
     it('should always return 200 even when DB times out', async () => {
       mockQuery.mockImplementationOnce(() => {
         return new Promise((resolve) => {
-          setTimeout(() => resolve({ rows: [] }), 3000);
+          setTimeout(() => resolve({ rows: [] } as any), 3000);
         });
       });
 
@@ -92,7 +92,7 @@ describe('Health Check API', () => {
     });
 
     it('should include timestamp in ISO format', async () => {
-      mockQuery.mockResolvedValueOnce({ rows: [] });
+      mockQuery.mockResolvedValueOnce({ rows: [] } as any);
 
       const response = await request(app).get('/api/health');
 
@@ -101,7 +101,7 @@ describe('Health Check API', () => {
     });
 
     it('should include version number', async () => {
-      mockQuery.mockResolvedValueOnce({ rows: [] });
+      mockQuery.mockResolvedValueOnce({ rows: [] } as any);
 
       const response = await request(app).get('/api/health');
 

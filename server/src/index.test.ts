@@ -42,7 +42,7 @@ describe('Health Check Endpoint', () => {
     });
     // Import the app fresh for each test
     vi.resetModules();
-    const { app: importedApp } = await import('./index');
+    const indexModule = await import('./index'); const importedApp = indexModule.default;
     app = importedApp;
   });
 
