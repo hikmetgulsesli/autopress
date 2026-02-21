@@ -3,8 +3,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // Mock react-router-dom
+const mockSearchParams = new URLSearchParams();
 vi.mock('react-router-dom', () => ({
-  useSearchParams: () => [new URLSearchParams(), vi.fn()],
+  useSearchParams: () => [mockSearchParams, vi.fn()],
+}));
+
+// Mock useArticleLoader
+const mockUseArticleLoader = vi.fn();
+vi.mock('../hooks/useArticleLoader', () => ({
+  useArticleLoader: () => mockUseArticleLoader(),
 }));
 
 // Mock api
@@ -58,6 +65,12 @@ describe('ContentStudio - Article Save API Integration', () => {
     mockPut.mockReset();
     mockNotifySuccess.mockReset();
     mockNotifyError.mockReset();
+    // Default mock for useArticleLoader - no article loaded
+    mockUseArticleLoader.mockReturnValue({
+      article: null,
+      isLoading: false,
+      error: null,
+    });
   });
 
   it('renders ContentStudio with save button', () => {
@@ -163,6 +176,108 @@ describe('ContentStudio - Article Save API Integration', () => {
 
     await waitFor(() => {
       expect(mockNotifyError).toHaveBeenCalledWith('Sunucu hatası');
+    });
+  });
+
+  it('makes PUT request for existing articles', async () => {
+    const user = userEvent.setup();
+    
+    // Mock existing article
+    mockUseArticleLoader.mockReturnValue({
+      article: { id: 1, title: 'Existing Article', content: '<p>Existing content</p>' },
+      isLoading: false,
+      error: null,
+    });
+
+    mockPut.mockResolvedValueOnce({
+      data: { id: 1, title: 'Updated Article', content: '<p>Updated content</p>' },
+    });
+
+    render(<ContentStudio />);
+
+    // Fill in title
+    const titleInput = screen.getByPlaceholderText('Makale başlığını girin...');
+    await user.clear(titleInput);
+    await user.type(titleInput, 'Updated Article');
+
+    // Fill in content
+    const contentEditor = screen.getByTestId('tiptap-editor');
+    await user.clear(contentEditor);
+    await user.type(contentEditor, '<p>Updated content</p>');
+
+    // Click save button
+    const saveButton = screen.getByRole('button', { name: /kaydet/i });
+    await user.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockPut).toHaveBeenCalledWith('/articles/1', expect.objectContaining({
+        title: 'Updated Article',
+        content: '<p>Updated content</p>',
+      }));
+    });
+  });
+
+  it('shows success toast after updating existing article', async () => {
+    const user = userEvent.setup();
+    
+    // Mock existing article
+    mockUseArticleLoader.mockReturnValue({
+      article: { id: 1, title: 'Existing Article', content: '<p>Existing content</p>' },
+      isLoading: false,
+      error: null,
+    });
+
+    mockPut.mockResolvedValueOnce({
+      data: { id: 1, title: 'Updated Article', content: '<p>Updated content</p>' },
+    });
+
+    render(<ContentStudio />);
+
+    const titleInput = screen.getByPlaceholderText('Makale başlığını girin...');
+    await user.clear(titleInput);
+    await user.type(titleInput, 'Updated Article');
+
+    const contentEditor = screen.getByTestId('tiptap-editor');
+    await user.clear(contentEditor);
+    await user.type(contentEditor, '<p>Updated content</p>');
+
+    const saveButton = screen.getByRole('button', { name: /kaydet/i });
+    await user.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockNotifySuccess).toHaveBeenCalledWith('Makale başarıyla güncellendi');
+    });
+  });
+
+  it('shows error toast when update fails', async () => {
+    const user = userEvent.setup();
+    
+    // Mock existing article
+    mockUseArticleLoader.mockReturnValue({
+      article: { id: 1, title: 'Existing Article', content: '<p>Existing content</p>' },
+      isLoading: false,
+      error: null,
+    });
+
+    mockPut.mockRejectedValueOnce({
+      response: { data: { error: 'Güncelleme hatası' } },
+    });
+
+    render(<ContentStudio />);
+
+    const titleInput = screen.getByPlaceholderText('Makale başlığını girin...');
+    await user.clear(titleInput);
+    await user.type(titleInput, 'Updated Article');
+
+    const contentEditor = screen.getByTestId('tiptap-editor');
+    await user.clear(contentEditor);
+    await user.type(contentEditor, '<p>Updated content</p>');
+
+    const saveButton = screen.getByRole('button', { name: /kaydet/i });
+    await user.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockNotifyError).toHaveBeenCalledWith('Güncelleme hatası');
     });
   });
 });
