@@ -42,14 +42,27 @@ vi.mock('../hooks/useArticleLoader', () => ({
 // Import after mocks
 import ContentStudio from '../pages/ContentStudio';
 
+// Mock useSearchParams to test topic pre-fill
+const mockSearchParams = new URLSearchParams();
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useSearchParams: () => [mockSearchParams, vi.fn()],
+  };
+});
+
 describe('ContentStudio Article Save', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockArticleValue = null;
+    mockSearchParams.delete('topic');
   });
 
   afterEach(() => {
     mockArticleValue = null;
+    mockSearchParams.delete('topic');
   });
 
   const renderContentStudio = () => {
@@ -195,6 +208,39 @@ describe('ContentStudio Article Save', () => {
       // Should show error toast
       await waitFor(() => {
         expect(mockError).toHaveBeenCalledWith('Güncelleme başarısız');
+      });
+    });
+  });
+
+  describe('Topic Pre-fill from URL', () => {
+    it('displays topic from URL query param in AI Assistant card', async () => {
+      mockSearchParams.set('topic', 'Yapay Zeka');
+
+      renderContentStudio();
+
+      // Should display the topic in the AI Assistant card
+      await waitFor(() => {
+        expect(screen.getByText('Trend Konusu')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+    });
+
+    it('does not display topic section when no topic in URL', async () => {
+      renderContentStudio();
+
+      // Should not display the topic section
+      expect(screen.queryByText('Trend Konusu')).not.toBeInTheDocument();
+    });
+
+    it('displays encoded topic correctly', async () => {
+      mockSearchParams.set('topic', 'Yapay Zeka & Makine Öğrenmesi');
+
+      renderContentStudio();
+
+      // Should display the decoded topic
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka & Makine Öğrenmesi')).toBeInTheDocument();
       });
     });
   });
