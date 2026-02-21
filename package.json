@@ -13,6 +13,7 @@
     "seed": "cd server && npm run seed"
   },
   "devDependencies": {
+    "@testing-library/user-event": "^14.6.1",
     "concurrently": "^9.1.0"
   }
 }
