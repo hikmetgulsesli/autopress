@@ -4,7 +4,9 @@ import { TipTapEditor } from '../components/TipTapEditor';
 import ImageSearch from '../components/ImageSearch';
 import ImageAttribution from '../components/ImageAttribution';
 import { useArticleLoader } from '../hooks/useArticleLoader';
-import type { ImageSearchResult } from '../types';
+import { notify } from '../utils/toast';
+import api from '../services/api';
+import type { ImageSearchResult, Article } from '../types';
 
 export default function ContentStudio() {
   const [title, setTitle] = useState('');
@@ -12,6 +14,7 @@ export default function ContentStudio() {
   const [isPreview, setIsPreview] = useState(false);
   const [featuredImage, setFeaturedImage] = useState<ImageSearchResult | null>(null);
   const [showImageSearch, setShowImageSearch] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   const { article, isLoading, error } = useArticleLoader();
 
@@ -23,9 +26,44 @@ export default function ContentStudio() {
     }
   }, [article]);
 
-  const handleSave = () => {
-    // TODO: Save article to backend
-    console.log('Saving article:', { title, content, featuredImage });
+  const handleSave = async () => {
+    if (!title.trim() || !content.trim()) {
+      notify.error('Başlık ve içerik alanları zorunludur');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const articleData = {
+        title: title.trim(),
+        content,
+        excerpt: content.slice(0, 200).replace(/<[^\u003e]*>/g, '') + '...',
+        featured_image_url: featuredImage?.url || null,
+      };
+
+      let savedArticle: Article;
+
+      if (article?.id) {
+        // Update existing article
+        const response = await api.put(`/articles/${article.id}`, articleData);
+        savedArticle = response.data;
+        notify.success('Makale başarıyla güncellendi');
+      } else {
+        // Create new article
+        const response = await api.post('/articles', articleData);
+        savedArticle = response.data;
+        notify.success('Makale başarıyla kaydedildi');
+      }
+
+      return savedArticle;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'Makale kaydedilirken bir hata oluştu';
+      notify.error(errorMessage);
+      throw err;
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSelectImage = (image: ImageSearchResult) => {
@@ -94,10 +132,20 @@ export default function ContentStudio() {
           <button
             type="button"
             onClick={handleSave}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            disabled={isSaving}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4" />
-            Kaydet
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Kaydediliyor...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Kaydet
+              </>
+            )}
           </button>
         </div>
       </div>

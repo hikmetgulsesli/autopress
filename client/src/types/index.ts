@@ -183,17 +183,10 @@ export interface LockedAccount {
   locked_until: string;
 }
 
-export interface UserProfile {
-  id: number;
-  email: string;
-  name: string;
-  role: string;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface UpdateProfileRequest {
   name: string;
+  email: string;
+  avatar_url?: string;
 }
 
 export interface ChangePasswordRequest {

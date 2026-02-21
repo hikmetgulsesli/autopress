@@ -1,19 +1,45 @@
 import { create } from 'zustand';
 import api from '../services/api';
 
+export interface WordPressCredentials {
+  site_url: string;
+  username: string;
+  app_password: string;
+}
+
+export interface BloggerCredentials {
+  client_id: string;
+  client_secret: string;
+  oauth_token?: string;
+  oauth_refresh_token?: string;
+  oauth_expires_at?: string;
+}
+
+export interface ApiCredentials {
+  wordpress?: WordPressCredentials;
+  blogger?: BloggerCredentials;
+}
+
 export interface Site {
   id: number;
   name: string;
   domain: string;
   platform: 'blogger' | 'wordpress';
   platform_id: string;
-  api_credentials: any;
+  api_credentials: ApiCredentials | null;
   language: string;
   niche: string;
   adsense_status: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface ConnectionTestResult {
+  success: boolean;
+  message: string;
+  platform: string;
+  tested_at: string;
 }
 
 interface SiteState {
@@ -23,6 +49,7 @@ interface SiteState {
   createSite: (data: Partial<Site>) => Promise<void>;
   updateSite: (id: number, data: Partial<Site>) => Promise<void>;
   deleteSite: (id: number) => Promise<void>;
+  testConnection: (id: number) => Promise<ConnectionTestResult>;
 }
 
 export const useSiteStore = create<SiteState>((set, get) => ({
@@ -52,5 +79,10 @@ export const useSiteStore = create<SiteState>((set, get) => ({
   deleteSite: async (id) => {
     await api.delete(`/sites/${id}`);
     set({ sites: get().sites.filter((s) => s.id !== id) });
+  },
+
+  testConnection: async (id) => {
+    const { data } = await api.post(`/sites/${id}/test-connection`);
+    return data.data as ConnectionTestResult;
   },
 }));

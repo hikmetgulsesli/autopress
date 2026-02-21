@@ -13,6 +13,15 @@ export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token gerekli'),
 });
 
+export const updateProfileSchema = z.object({
+  name: z.string().min(1, 'İsim gerekli').max(100, 'İsim çok uzun'),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Mevcut şifre gerekli'),
+  newPassword: z.string().min(8, 'Yeni şifre en az 8 karakter olmalıdır'),
+});
+
 // ============================================================================
 // Sites Schemas
 // ============================================================================
