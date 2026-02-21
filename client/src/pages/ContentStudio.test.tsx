@@ -79,7 +79,7 @@ describe('ContentStudio - Article Save API Integration', () => {
     expect(screen.getByTestId('tiptap-editor')).toBeInTheDocument();
   });
 
-  it('shows validation error when trying to save empty form', async () => {
+  it('shows validation error when trying to save without title', async () => {
     const user = userEvent.setup();
     render(<ContentStudio />);
 
@@ -87,7 +87,7 @@ describe('ContentStudio - Article Save API Integration', () => {
     await user.click(saveButton);
 
     await waitFor(() => {
-      expect(mockNotifyError).toHaveBeenCalledWith('Başlık ve içerik alanları zorunludur');
+      expect(mockNotifyError).toHaveBeenCalledWith('Lütfen bir başlık girin');
     });
   });
 

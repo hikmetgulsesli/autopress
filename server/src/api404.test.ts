@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import express from 'express';
-import { errorHandler } from '../middleware/errorHandler';
+import { errorHandler } from './middleware/errorHandler';
 
 describe('API 404 Handling', () => {
   let app: express.Application;
