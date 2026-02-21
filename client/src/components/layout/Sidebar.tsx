@@ -35,27 +35,27 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         />
       )}
       
-      <aside 
+      <aside
         className={clsx(
-          'fixed left-0 top-0 h-screen w-64 bg-dark-900 border-r border-dark-700 flex flex-col z-50',
+          'fixed left-0 top-0 h-screen w-64 bg-surface border-r border-border flex flex-col z-50',
           'transition-transform duration-300 ease-out',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           'lg:translate-x-0'
         )}
       >
-        <div className="p-5 border-b border-dark-700 flex items-center justify-between">
+        <div className="p-5 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center">
               <Newspaper className="w-5 h-5 text-white" />
             </div>
             <div>
               <h1 className="text-lg font-bold text-white">AutoPress</h1>
-              <p className="text-xs text-dark-400">AI Yayıncılık</p>
+              <p className="text-xs text-text-muted">AI Yayıncılık</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="p-1.5 rounded-lg transition-colors cursor-pointer lg:hidden text-dark-400 hover:text-white hover:bg-dark-800"
+            className="p-1.5 rounded-lg transition-colors cursor-pointer lg:hidden text-text-muted hover:text-white hover:bg-surface-alt"
             aria-label="Close menu"
           >
             <X className="w-5 h-5" />
@@ -74,7 +74,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer',
                   isActive
                     ? 'bg-primary-600/20 text-primary-400'
-                    : 'text-dark-300 hover:text-white hover:bg-dark-800'
+                    : 'text-text-muted hover:text-white hover:bg-surface-alt'
                 )
               }
             >
@@ -84,10 +84,10 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-dark-700">
+        <div className="p-3 border-t border-border">
           <button
             onClick={() => logout()}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-dark-400 hover:text-red-400 hover:bg-dark-800 transition-colors cursor-pointer"
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-text-muted hover:text-red-400 hover:bg-surface-alt transition-colors cursor-pointer"
           >
             <LogOut className="w-5 h-5" />
             Çıkış Yap
