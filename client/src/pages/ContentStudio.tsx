@@ -10,6 +10,7 @@ import { notify } from '../utils/toast';
 import type { ImageSearchResult, Article } from '../types';
 
 export default function ContentStudio() {
+  const [searchParams] = useSearchParams();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isPreview, setIsPreview] = useState(false);
@@ -19,6 +20,9 @@ export default function ContentStudio() {
   const { article, isLoading, error } = useArticleLoader();
 
   const [isSaving, setIsSaving] = useState(false);
+
+  // Get topic from URL query params (from TrendExplorer)
+  const topicFromUrl = searchParams.get('topic');
 
   // Load article data when fetched from URL param
   useEffect(() => {
@@ -270,6 +274,14 @@ export default function ContentStudio() {
                 <p className="text-text-muted text-sm mt-1">
                   Yapay zeka ile içerik önerileri alın.
                 </p>
+                
+                {/* Pre-filled Topic from TrendExplorer */}
+                {topicFromUrl && (
+                  <div className="mt-3 p-3 bg-primary-500/10 rounded-lg border border-primary-500/20">
+                    <p className="text-xs text-primary-400 uppercase tracking-wide mb-1">Trend Konusu</p>
+                    <p className="text-sm text-text font-medium">{topicFromUrl}</p>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2 mt-3">
                   <button
                     type="button"

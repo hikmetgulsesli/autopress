@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { TrendingUp, Globe, AlertCircle, Loader2, Search, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { TrendingUp, Globe, AlertCircle, Loader2, Search, X, FilePlus } from 'lucide-react';
 import api from '../services/api';
 
 interface Trend {
@@ -44,6 +45,8 @@ export default function TrendExplorer() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [creatingArticleId, setCreatingArticleId] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   const fetchTrends = useCallback(async (region: string) => {
     setLoading(true);
@@ -119,6 +122,12 @@ export default function TrendExplorer() {
     if (isSearching && searchKeyword.trim()) {
       searchTrends(searchKeyword, newRegion);
     }
+  };
+
+  const handleCreateArticle = (topic: string, trendId: number) => {
+    setCreatingArticleId(trendId);
+    // Navigate to ContentStudio with topic pre-filled
+    navigate(`/content?topic=${encodeURIComponent(topic)}`);
   };
 
   useEffect(() => {
@@ -318,6 +327,23 @@ export default function TrendExplorer() {
                     
                     {/* Stats */}
                     <div className="flex items-center gap-3 sm:gap-6">
+                      {/* Create Article Button */}
+                      <button
+                        onClick={() => handleCreateArticle(trend.topic, trend.id)}
+                        disabled={creatingArticleId === trend.id}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none"
+                        aria-label={`${trend.topic} için makale oluştur`}
+                      >
+                        {creatingArticleId === trend.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <FilePlus className="w-4 h-4" aria-hidden="true" />
+                        )}
+                        <span className="hidden sm:inline text-sm font-medium">
+                          {creatingArticleId === trend.id ? 'Oluşturuluyor...' : 'Makale'}
+                        </span>
+                      </button>
+
                       {/* News Count */}
                       <div className="text-right hidden sm:block">
                         <p className="text-xs text-dark-400 uppercase tracking-wide">Haber</p>

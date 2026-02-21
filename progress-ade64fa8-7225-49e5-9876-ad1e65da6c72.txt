@@ -1,0 +1,14 @@
+---
+US-003: Settings Page - Profile Tab - COMPLETED
+- Branch: US-003
+- PR: https://github.com/hikmetgulsesli/autopress/pull/102
+- Implemented: Added Profile tab with name (editable), email (read-only), password change form with validation. Connected to /auth/profile PATCH and /auth/change-password POST endpoints. All acceptance criteria met.
+- Tests: Profile tab renders, name editable, email read-only, password validation (8 chars min, matching confirmation), API integration works
+- Completed: Sat Feb 21 03:56:00 +03 2026
+---
+US-005: Auth Token Refresh Race Fix - COMPLETED
+- Branch: US-005
+- PR: https://github.com/hikmetgulsesli/autopress/pull/103
+- Implemented: Implemented robust mutex/queue pattern for token refresh in api.ts. Added RefreshState interface, single promise pattern to prevent duplicate refresh calls, refreshSubscribers array for queuing waiting requests, proper error handling with token cleanup and redirect on failure.
+- Tests: Added 11 comprehensive tests for token refresh functionality covering mutex pattern, state management, API structure, and interceptors. All tests pass.
+- Completed: Sat Feb 21 04:11:00 +03 2026
