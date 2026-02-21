@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, Globe, AlertCircle, Loader2, FilePlus } from 'lucide-react';
+import { TrendingUp, Globe, AlertCircle, Loader2, FilePlus, Search, X } from 'lucide-react';
 import api from '../services/api';
 
 interface Trend {
@@ -44,6 +44,9 @@ export default function TrendExplorer() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [creatingArticleId, setCreatingArticleId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchLoading, setSearchLoading] = useState<boolean>(false);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
   const navigate = useNavigate();
 
   const fetchTrends = useCallback(async (region: string) => {
@@ -69,6 +72,41 @@ export default function TrendExplorer() {
       setLoading(false);
     }
   }, []);
+
+  const handleSearch = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    
+    setIsSearching(true);
+    setSearchLoading(true);
+    setError(null);
+    
+    try {
+      const params = new URLSearchParams();
+      params.append('keyword', searchQuery.trim());
+      if (selectedRegion !== 'all') {
+        params.append('region', selectedRegion);
+      }
+      params.append('limit', '50');
+      
+      const response = await api.get(`/trends/search?${params.toString()}`);
+      const data = response.data;
+      
+      // Handle both array response and wrapped response
+      const trendsData = Array.isArray(data) ? data : data.data || [];
+      setTrends(trendsData);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || err.message || 'Arama sırasında bir hata oluştu');
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [searchQuery, selectedRegion]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+    setIsSearching(false);
+    fetchTrends(selectedRegion);
+  }, [selectedRegion, fetchTrends]);
 
   useEffect(() => {
     fetchTrends(selectedRegion);
@@ -114,7 +152,50 @@ export default function TrendExplorer() {
           <p className="text-dark-400 mt-1">Güncel trendleri keşfedin ve analiz edin</p>
         </div>
         
-        {/* Region Filter */}
+        {/* Search Form */}
+        <form onSubmit={handleSearch} className="flex items-center gap-2">
+          <div className="relative">
+            <label htmlFor="trend-search" className="sr-only">
+              Trend ara
+            </label>
+            <input
+              id="trend-search"
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Trend ara..."
+              className="input pr-10 min-w-[200px] cursor-text"
+              aria-label="Trend ara"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-dark-400 hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none rounded"
+                aria-label="Aramayı temizle"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={searchLoading || !searchQuery.trim()}
+            className="btn btn-primary flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Ara"
+          >
+            {searchLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Search className="w-4 h-4" aria-hidden="true" />
+            )}
+            <span className="hidden sm:inline">Ara</span>
+          </button>
+        </form>
+      </div>
+
+      {/* Region Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
           <Globe className="w-5 h-5 text-primary-400" aria-hidden="true" />
           <label htmlFor="region-filter" className="sr-only">
@@ -124,7 +205,7 @@ export default function TrendExplorer() {
             id="region-filter"
             value={selectedRegion}
             onChange={handleRegionChange}
-            disabled={loading}
+            disabled={loading || searchLoading}
             className="input min-w-[180px] cursor-pointer"
             aria-label="Bölge filtresi"
           >
@@ -135,6 +216,15 @@ export default function TrendExplorer() {
             ))}
           </select>
         </div>
+        
+        {isSearching && (
+          <button
+            onClick={handleClearSearch}
+            className="text-sm text-primary-400 hover:text-primary-300 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none rounded px-2 py-1 -ml-2"
+          >
+            Aramayı temizle
+          </button>
+        )}
       </div>
 
       {/* Loading State */}
