@@ -13,7 +13,8 @@ import seoRoutes from './routes/seo';
 import settingsRoutes from './routes/settings';
 import searchConsoleRoutes from './routes/searchconsole';
 import schedulerRoutes from './routes/scheduler';
-import { startScheduler, getSchedulerStatus } from './services/scheduler.service';
+import { startScheduler, stopScheduler, getSchedulerStatus } from './services/scheduler.service';
+import { pool } from './db/connection';
 
 dotenv.config();
 
@@ -54,5 +55,29 @@ app.listen(PORT, () => {
   startScheduler();
   logger.info('Scheduler started');
 });
+
+// Graceful shutdown handler
+const gracefulShutdown = async (signal: string): Promise<void> => {
+  logger.info(`Received ${signal}, starting graceful shutdown...`);
+  
+  // Stop the scheduler first to prevent new jobs
+  stopScheduler();
+  logger.info('Scheduler stopped');
+  
+  // Drain the database pool
+  try {
+    await pool.end();
+    logger.info('Database pool drained');
+  } catch (err) {
+    logger.error('Error draining database pool:', err);
+  }
+  
+  logger.info('Graceful shutdown complete');
+  process.exit(0);
+};
+
+// Register signal handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 export default app;
