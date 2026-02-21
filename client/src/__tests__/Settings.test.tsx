@@ -57,7 +57,7 @@ describe('Settings', () => {
   it('loads and displays API keys from settings', async () => {
     mockApi.get.mockResolvedValue({
       data: {
-        openai_api_key: 'sk-test123',
+        openai_api_key: '********',
         unsplash_api_key: 'unsplash-key-456',
         google_trends_api_key: 'trends-key-789',
         search_console_client_id: 'client-id-abc',
@@ -125,7 +125,7 @@ describe('Settings', () => {
 
     // Enter a value
     const openaiInput = screen.getByLabelText('OpenAI API Key');
-    fireEvent.change(openaiInput, { target: { value: 'sk-new-api-key' } });
+    fireEvent.change(openaiInput, { target: { value: '********' } });
 
     // Click save button for OpenAI
     const saveButtons = screen.getAllByRole('button', { name: /kaydet/i });
@@ -133,7 +133,7 @@ describe('Settings', () => {
 
     await waitFor(() => {
       expect(mockApi.put).toHaveBeenCalledWith('/settings/openai_api_key', {
-        value: 'sk-new-api-key',
+        value: '********',
         type: 'string',
       });
     });
@@ -276,7 +276,7 @@ describe('Settings', () => {
 
     // Enter a value and save
     const openaiInput = screen.getByLabelText('OpenAI API Key');
-    fireEvent.change(openaiInput, { target: { value: 'sk-test' } });
+    fireEvent.change(openaiInput, { target: { value: '********' } });
 
     const saveButtons = screen.getAllByRole('button', { name: /kaydet/i });
     fireEvent.click(saveButtons[0]);

@@ -22,7 +22,7 @@ vi.mock('../store/siteStore', () => ({
             wordpress: {
               site_url: 'https://testwp.com',
               username: 'admin',
-              app_password: 'secret_password_123'
+              app_password: '********'
             }
           },
           language: 'tr',
@@ -40,10 +40,10 @@ vi.mock('../store/siteStore', () => ({
           platform_id: '123456789',
           api_credentials: {
             blogger: {
-              client_id: '123456.apps.googleusercontent.com',
-              client_secret: 'GOCSPX-secret',
-              oauth_token: 'ya29.a0AfH6SMBx...',
-              oauth_refresh_token: '1//04d...',
+              client_id: '********.apps.googleusercontent.com',
+              client_secret: '********',
+              oauth_token: '********',
+              oauth_refresh_token: '********',
               oauth_expires_at: '2024-12-31T23:59:59Z'
             }
           },
@@ -345,7 +345,7 @@ describe('SiteManager - API Credentials Form', () => {
       fireEvent.change(clientIdInput, { target: { value: '123456.apps.googleusercontent.com' } });
 
       const clientSecretInput = screen.getByPlaceholderText('Google Cloud Console Client Secret');
-      fireEvent.change(clientSecretInput, { target: { value: 'GOCSPX-secret123' } });
+      fireEvent.change(clientSecretInput, { target: { value: '********' } });
 
       // Submit form
       const submitButton = screen.getByText('Site Ekle');
@@ -361,7 +361,7 @@ describe('SiteManager - API Credentials Form', () => {
       expect(callArg.api_credentials).toHaveProperty('blogger');
       expect(callArg.api_credentials.blogger).toEqual({
         client_id: '123456.apps.googleusercontent.com',
-        client_secret: 'GOCSPX-secret123'
+        client_secret: '********'
       });
     });
   });
