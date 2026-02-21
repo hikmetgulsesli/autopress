@@ -352,6 +352,26 @@ const logPublishHistory = async (
 
 // Main service functions
 
+/**
+ * Publish a post with custom WordPress config (for scheduler)
+ */
+export const publishPostWithConfig = async (
+  articleId: number,
+  post: WordPressPost,
+  config: WordPressConfig
+): Promise<WordPressPublishResult> => {
+  const wp = new WordPressClient(config);
+
+  const result = await wp.createPost(post);
+
+  return {
+    success: true,
+    wordpressId: result.id,
+    wordpressUrl: result.link,
+    status: post.status,
+  };
+};
+
 export const publishPost = async (
   articleId: number,
   post: WordPressPost
