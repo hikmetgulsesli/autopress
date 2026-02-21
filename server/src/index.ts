@@ -20,6 +20,7 @@ import rssRoutes from './routes/rss';
 import bulkSeoRoutes from './routes/bulkseo';
 import securityRoutes from './routes/security';
 import bloggerRoutes from './routes/blogger';
+import contentRoutes from './routes/content';
 import { startScheduler, getSchedulerStatus } from './services/scheduler.service';
 
 dotenv.config();
@@ -55,6 +56,7 @@ app.use('/api/rss', rssRoutes);
 app.use('/api/bulk-seo', bulkSeoRoutes);
 app.use('/api/security', securityRoutes);
 app.use('/api/blogger', bloggerRoutes);
+app.use('/api/content', contentRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
