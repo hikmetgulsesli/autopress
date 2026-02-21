@@ -368,8 +368,8 @@ export const publishArticle = async (queueItem: PublishQueueItem): Promise<void>
         status: 'publish',
       };
 
-      // Publish to WordPress
-      const result = await wordpressService.publishPostWithConfig(article_id, postData, credentials);
+      // Publish to WordPress (uses internal config, not passed credentials)
+      const result = await wordpressService.publishPost(article_id, postData);
 
       platformPostId = result.wordpressId.toString();
       publishedUrl = result.wordpressUrl;
