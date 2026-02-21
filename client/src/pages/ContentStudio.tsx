@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle, Search, FileText, Clock, Hash, Globe, Languages } from 'lucide-react';
+import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle, Search, Globe, Languages, CheckCircle2, TrendingUp } from 'lucide-react';
 import { TipTapEditor } from '../components/TipTapEditor';
 import { SEOPanel } from '../components/SEOPanel';
 import ImageSearch from '../components/ImageSearch';
@@ -10,6 +10,16 @@ import { notify } from '../utils/toast';
 import type { ImageSearchResult, Article, Site } from '../types';
 
 type TabType = 'featured-image' | 'seo' | 'ai-assistant';
+
+interface TitleSuggestionResponse {
+  suggestions: string[];
+}
+
+interface SEOAnalysisResponse {
+  score: number;
+  suggestions: string[];
+  metrics: Record<string, number | string>;
+}
 
 export default function ContentStudio() {
   const [searchParams] = useSearchParams();
@@ -46,6 +56,14 @@ export default function ContentStudio() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadedArticle, setLoadedArticle] = useState<Article | null>(null);
+
+  // AI Assistant state (US-001)
+  const [isSuggestingTitle, setIsSuggestingTitle] = useState(false);
+  const [isAnalyzingSEO, setIsAnalyzingSEO] = useState(false);
+  const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
+  const [showTitleSuggestions, setShowTitleSuggestions] = useState(false);
+  const [seoAnalysis, setSeoAnalysis] = useState<SEOAnalysisResponse | null>(null);
+  const [showSEOAnalysis, setShowSEOAnalysis] = useState(false);
 
   // Set title from topic parameter when no article is being loaded
   useEffect(() => {
@@ -180,6 +198,82 @@ export default function ContentStudio() {
 
   const handleRemoveImage = () => {
     setFeaturedImage(null);
+  };
+
+  // AI Assistant: Suggest Title (US-001)
+  const handleSuggestTitle = async () => {
+    if (!title && !content) {
+      notify.error('Lütfen önce başlık veya içerik girin');
+      return;
+    }
+
+    setIsSuggestingTitle(true);
+    setError(null);
+
+    try {
+      const response = await api.post<TitleSuggestionResponse>('/content/suggest-title', {
+        title,
+        content,
+        language: selectedLanguage,
+      });
+
+      setTitleSuggestions(response.data.suggestions);
+      setShowTitleSuggestions(true);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'Başlık önerileri alınamadı';
+      notify.error(errorMessage);
+    } finally {
+      setIsSuggestingTitle(false);
+    }
+  };
+
+  // AI Assistant: Select Title Suggestion (US-001)
+  const handleSelectTitleSuggestion = (suggestion: string) => {
+    setTitle(suggestion);
+    setShowTitleSuggestions(false);
+    notify.success('Başlık güncellendi');
+  };
+
+  // AI Assistant: SEO Analysis (US-001)
+  const handleAnalyzeSEO = async () => {
+    if (!title || !content) {
+      notify.error('Lütfen önce başlık ve içerik girin');
+      return;
+    }
+
+    setIsAnalyzingSEO(true);
+    setError(null);
+
+    try {
+      const response = await api.post<SEOAnalysisResponse>('/content/analyze-seo', {
+        title,
+        content,
+        slug,
+      });
+
+      setSeoAnalysis(response.data);
+      setShowSEOAnalysis(true);
+      notify.success('SEO analizi tamamlandı');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'SEO analizi yapılamadı';
+      notify.error(errorMessage);
+    } finally {
+      setIsAnalyzingSEO(false);
+    }
+  };
+
+  // Get SEO score color
+  const getSEOscoreColor = (score: number) => {
+    if (score >= 80) return 'text-success';
+    if (score >= 60) return 'text-warning';
+    return 'text-error';
+  };
+
+  // Get SEO score label
+  const getSEOScoreLabel = (score: number) => {
+    if (score >= 80) return 'İyi';
+    if (score >= 60) return 'Orta';
+    return 'Geliştirilmeli';
   };
 
   // Loading state
@@ -501,25 +595,138 @@ export default function ContentStudio() {
                   <p className="text-text-muted text-sm mt-1">
                     Yapay zeka ile i\u00E7erik \u00F6nerileri al\u0131n.
                   </p>
-                  <div className="flex flex-wrap gap-2 mt-3">
+
+                  {/* AI Action Buttons */}
+                  <div className="flex flex-col gap-2 mt-3">
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-surface text-text-muted hover:text-text hover:bg-surface-elevated transition-all duration-200 cursor-pointer border border-border"
+                      onClick={handleSuggestTitle}
+                      disabled={isSuggestingTitle}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-surface text-text hover:text-text hover:bg-surface-elevated transition-all duration-200 cursor-pointer border border-border disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
                     >
-                      <PenTool className="w-3 h-3" />
+                      {isSuggestingTitle ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <PenTool className="w-4 h-4" />
+                      )}
                       Ba\u015Fl\u0131k \u00D6ner
                     </button>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-surface text-text-muted hover:text-text hover:bg-surface-elevated transition-all duration-200 cursor-pointer border border-border"
+                      onClick={handleAnalyzeSEO}
+                      disabled={isAnalyzingSEO}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-surface text-text hover:text-text hover:bg-surface-elevated transition-all duration-200 cursor-pointer border border-border disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
                     >
-                      <Sparkles className="w-3 h-3" />
+                      {isAnalyzingSEO ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-4 h-4" />
+                      )}
                       SEO Analizi
                     </button>
                   </div>
                 </div>
+
+                {/* Title Suggestions Panel (US-001) */}
+                {showTitleSuggestions && titleSuggestions.length > 0 && (
+                  <div className="space-y-3 pt-4 border-t border-border" style={{ borderColor: 'var(--color-border)' }}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-text">Ba\u015Fl\u0131k \u00D6nerileri</span>
+                      <button
+                        onClick={() => setShowTitleSuggestions(false)}
+                        className="text-text-muted hover:text-text transition-colors p-1"
+                        aria-label="Close title suggestions"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {titleSuggestions.map((suggestion, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => handleSelectTitleSuggestion(suggestion)}
+                          className="w-full text-left px-3 py-2.5 rounded-lg text-sm bg-surface-alt border border-border text-text hover:border-primary-400/50 hover:bg-surface-elevated transition-all duration-200 cursor-pointer"
+                          style={{ backgroundColor: 'var(--color-surface-alt)', borderColor: 'var(--color-border)' }}
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* SEO Analysis Panel (US-001) */}
+                {showSEOAnalysis && seoAnalysis && (
+                  <div className="space-y-4 pt-4 border-t border-border" style={{ borderColor: 'var(--color-border)' }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-primary-400" style={{ color: 'var(--color-primary-400)' }} />
+                        <span className="text-sm font-medium text-text">SEO Analizi</span>
+                      </div>
+                      <button
+                        onClick={() => setShowSEOAnalysis(false)}
+                        className="text-text-muted hover:text-text transition-colors p-1"
+                        aria-label="Close SEO analysis"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* SEO Score */}
+                    <div className="flex items-center justify-between p-4 bg-surface-alt rounded-xl" style={{ backgroundColor: 'var(--color-surface-alt)' }}>
+                      <div>
+                        <p className="text-xs text-text-muted">SEO Puan\u0131</p>
+                        <p className={`text-2xl font-bold ${getSEOscoreColor(seoAnalysis.score)}`}>
+                          {seoAnalysis.score}/100
+                        </p>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${getSEOscoreColor(seoAnalysis.score)}`}>
+                        {getSEOScoreLabel(seoAnalysis.score)}
+                      </div>
+                    </div>
+
+                    {/* SEO Metrics */}
+                    {seoAnalysis.metrics && Object.keys(seoAnalysis.metrics).length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-text-muted uppercase tracking-wider">Metrikler</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {Object.entries(seoAnalysis.metrics).map(([key, value]) => (
+                            <div
+                              key={key}
+                              className="px-3 py-2 bg-surface-alt rounded-lg text-xs"
+                              style={{ backgroundColor: 'var(--color-surface-alt)' }}
+                            >
+                              <p className="text-text-muted">{key}</p>
+                              <p className="font-semibold text-text">{String(value)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SEO Suggestions */}
+                    {seoAnalysis.suggestions.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-text-muted uppercase tracking-wider">\u00D6neriler</p>
+                        <div className="space-y-2">
+                          {seoAnalysis.suggestions.map((suggestion, index) => (
+                            <div
+                              key={index}
+                              className="flex items-start gap-2 p-3 bg-surface-alt rounded-lg"
+                              style={{ backgroundColor: 'var(--color-surface-alt)' }}
+                            >
+                              <CheckCircle2 className="w-4 h-4 text-primary-400 mt-0.5 flex-shrink-0" style={{ color: 'var(--color-primary-400)' }} />
+                              <p className="text-sm text-text">{suggestion}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

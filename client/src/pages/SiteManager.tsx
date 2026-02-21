@@ -29,11 +29,13 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    try { 
-      await onSave(form); 
-      onClose(); 
-    } catch {} finally { 
-      setSaving(false); 
+    try {
+      await onSave(form);
+      onClose();
+    } catch (err) {
+      console.error('Save failed:', err);
+    } finally {
+      setSaving(false);
     }
   };
 

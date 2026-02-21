@@ -10,7 +10,8 @@
     "build": "cd client && npm run build && cd ../server && npm run build",
     "start": "cd server && npm start",
     "migrate": "cd server && npm run migrate",
-    "seed": "cd server && npm run seed"
+    "seed": "cd server && npm run seed",
+    "lint": "cd client && npm run lint"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
