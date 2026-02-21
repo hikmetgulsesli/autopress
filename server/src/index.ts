@@ -20,7 +20,6 @@ import rssRoutes from './routes/rss';
 import bulkSeoRoutes from './routes/bulkseo';
 import securityRoutes from './routes/security';
 import bloggerRoutes from './routes/blogger';
-import contentRoutes from './routes/content';
 import { startScheduler, getSchedulerStatus } from './services/scheduler.service';
 
 dotenv.config();
@@ -56,7 +55,6 @@ app.use('/api/rss', rssRoutes);
 app.use('/api/bulk-seo', bulkSeoRoutes);
 app.use('/api/security', securityRoutes);
 app.use('/api/blogger', bloggerRoutes);
-app.use('/api/content', contentRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -68,13 +66,14 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// API 404 handler - must be after all routes
+// API 404 handler - must be after all API routes
 app.use('/api/*', (_req, res) => {
   res.status(404).json({
-    error: 'Endpoint bulunamadi',
-    message: 'Istenen API endpointi mevcut degil',
-    path: _req.originalUrl,
-    timestamp: new Date().toISOString(),
+    error: {
+      code: 'NOT_FOUND',
+      message: 'API endpoint not found',
+      details: [],
+    },
   });
 });
 

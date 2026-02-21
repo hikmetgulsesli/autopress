@@ -4,73 +4,79 @@ import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCirc
 import { TipTapEditor } from '../components/TipTapEditor';
 import ImageSearch from '../components/ImageSearch';
 import ImageAttribution from '../components/ImageAttribution';
-import { useArticleLoader } from '../hooks/useArticleLoader';
 import api from '../services/api';
-import { notify } from '../utils/toast';
 import type { ImageSearchResult, Article } from '../types';
 
 export default function ContentStudio() {
   const [searchParams] = useSearchParams();
+  const articleId = searchParams.get('article');
+  const topicParam = searchParams.get('topic');
+  
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isPreview, setIsPreview] = useState(false);
   const [featuredImage, setFeaturedImage] = useState<ImageSearchResult | null>(null);
   const [showImageSearch, setShowImageSearch] = useState(false);
   
-  const { article, isLoading, error } = useArticleLoader();
+  // Article loading states
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loadedArticle, setLoadedArticle] = useState<Article | null>(null);
 
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Get topic from URL query params (from TrendExplorer)
-  const topicFromUrl = searchParams.get('topic');
-
-  // Load article data when fetched from URL param
+  // Set title from topic parameter when no article is being loaded
   useEffect(() => {
-    if (article) {
-      setTitle(article.title || '');
-      setContent(article.content || '');
+    if (topicParam && !articleId && !title) {
+      setTitle(topicParam);
     }
-  }, [article]);
+  }, [topicParam, articleId, title]);
 
-  const handleSave = async () => {
-    if (!title.trim()) {
-      notify.error('Lütfen bir başlık girin');
-      return;
-    }
+  // Fetch article from URL param
+  useEffect(() => {
+    if (!articleId) return;
 
-    setIsSaving(true);
-
-    try {
-      const articleData = {
-        title: title.trim(),
-        content,
-        featured_image_url: featuredImage?.url || null,
-        featured_image_attribution: featuredImage ? {
-          photographer: featuredImage.photographer?.name || '',
-          portfolio: featuredImage.photographer?.portfolioUrl || '',
-        } : null,
-      };
-
-      let response;
-
-      if (article?.id) {
-        // Existing article - PUT request
-        response = await api.put(`/articles/${article.id}`, articleData);
-        notify.success('Makale başarıyla güncellendi');
-      } else {
-        // New article - POST request
-        response = await api.post('/articles', articleData);
-        notify.success('Makale başarıyla kaydedildi');
+    const fetchArticle = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const response = await api.get<Article>(`/articles/${articleId}`);
+        const article = response.data;
+        
+        setLoadedArticle(article);
+        setTitle(article.title || '');
+        setContent(article.content || '');
+        
+        // Set featured image if available
+        if (article.featured_image_url) {
+          setFeaturedImage({
+            id: String(article.id),
+            url: article.featured_image_url,
+            thumbUrl: article.featured_image_url,
+            description: null,
+            altDescription: null,
+            width: 0,
+            height: 0,
+            photographer: { name: '', username: '', portfolioUrl: '' },
+            color: null,
+          });
+        }
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          setError('Makale bulunamadı');
+        } else {
+          setError(err.response?.data?.error || 'Makale yüklenirken bir hata oluştu');
+        }
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      console.log('Article saved:', response.data);
-    } catch (err: any) {
-      console.error('Error saving article:', err);
-      const errorMessage = err.response?.data?.error || 'Makale kaydedilirken bir hata oluştu';
-      notify.error(errorMessage);
-    } finally {
-      setIsSaving(false);
-    }
+    fetchArticle();
+  }, [articleId]);
+
+  const handleSave = () => {
+    // TODO: Save article to backend
+    console.log('Saving article:', { title, content, featuredImage });
   };
 
   const handleSelectImage = (image: ImageSearchResult) => {
@@ -116,7 +122,9 @@ export default function ContentStudio() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">İçerik Stüdyosu</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {loadedArticle ? 'Makale Düzenle' : topicParam ? `Makale Oluştur: ${topicParam}` : 'İçerik Stüdyosu'}
+          </h1>
           <p className="text-dark-400 mt-1">AI ile SEO uyumlu içerik üretin</p>
         </div>
         <div className="flex items-center gap-2">
@@ -139,23 +147,39 @@ export default function ContentStudio() {
           <button
             type="button"
             onClick={handleSave}
-            disabled={isSaving}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            {isSaving ? 'Kaydediliyor...' : 'Kaydet'}
+            <Save className="w-4 h-4" />
+            Kaydet
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content Column */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Title Input */}
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 text-primary-400 animate-spin" style={{ color: 'var(--color-primary-400)' }} />
+          <span className="ml-3 text-text-muted">Makale yükleniyor...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 bg-error/10 border border-error/30 rounded-xl" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+          <AlertCircle className="w-5 h-5 text-error flex-shrink-0" style={{ color: '#ef4444' }} />
+          <div>
+            <p className="font-medium text-error" style={{ color: '#ef4444' }}>Hata</p>
+            <p className="text-text-muted text-sm">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Content - hide when loading or error */}
+      {!isLoading && !error && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content Column */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Title Input */}
           <div className="space-y-2">
             <label htmlFor="article-title" className="block text-sm font-medium text-text">
               Başlık
@@ -182,6 +206,7 @@ export default function ContentStudio() {
               />
             ) : (
               <TipTapEditor
+                key={articleId}
                 content={content}
                 onChange={setContent}
                 placeholder="Makale içeriğini yazmaya başlayın..."
@@ -274,15 +299,6 @@ export default function ContentStudio() {
                 <p className="text-text-muted text-sm mt-1">
                   Yapay zeka ile içerik önerileri alın.
                 </p>
-                
-                {/* Pre-filled Topic from TrendExplorer */}
-                {topicFromUrl && (
-                  <div className="mt-3 p-3 bg-primary-500/10 rounded-lg border border-primary-500/20">
-                    <p className="text-xs text-primary-400 uppercase tracking-wide mb-1">Trend Konusu</p>
-                    <p className="text-sm text-text font-medium">{topicFromUrl}</p>
-                  </div>
-                )}
-                
                 <div className="flex flex-wrap gap-2 mt-3">
                   <button
                     type="button"
@@ -306,6 +322,7 @@ export default function ContentStudio() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

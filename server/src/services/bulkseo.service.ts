@@ -187,6 +187,19 @@ export const getArticlesForAnalysis = async (
   return result.rows;
 };
 
+// Calculate SEO score based on issues
+const calculateSEOScore = (issues: SEOIssue[]): number => {
+  const errorCount = issues.filter(i => i.type === 'error').length;
+  const warningCount = issues.filter(i => i.type === 'warning').length;
+  
+  // Start with perfect score and deduct
+  let score = 100;
+  score -= errorCount * 15;  // Errors are costly
+  score -= warningCount * 5; // Warnings are minor
+  
+  return Math.max(0, Math.min(100, score));
+};
+
 // Update article SEO score in database
 export const updateArticleSEOScore = async (
   articleId: number,
@@ -303,21 +316,10 @@ export const analyzeArticleSEO = async (article: {
     });
   }
 
-  // Calculate SEO score based on issues
-  let calculatedScore = 100;
+  // Calculate new SEO score based on analysis
+  const calculatedScore = calculateSEOScore(issues);
   
-  // Deduct points for errors (10 points each)
-  const errorCount = issues.filter(i => i.type === 'error').length;
-  calculatedScore -= errorCount * 10;
-  
-  // Deduct points for warnings (5 points each)
-  const warningCount = issues.filter(i => i.type === 'warning').length;
-  calculatedScore -= warningCount * 5;
-  
-  // Ensure score is between 0 and 100
-  calculatedScore = Math.max(0, Math.min(100, calculatedScore));
-
-  // Save the calculated SEO score to the database
+  // Save the calculated SEO score to database
   await updateArticleSEOScore(article.id, calculatedScore);
 
   return {
