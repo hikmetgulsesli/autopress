@@ -48,6 +48,48 @@ router.get('/keywords', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// Search trends by keyword (GET endpoint for search)
+router.get('/search', async (req: AuthRequest, res: Response) => {
+  try {
+    const { keyword, region, language, limit = '50' } = req.query;
+    
+    if (!keyword || typeof keyword !== 'string' || keyword.trim().length === 0) {
+      return res.status(400).json({
+        error: {
+          code: 'INVALID_KEYWORD',
+          message: 'Keyword is required and must be a non-empty string',
+        },
+      });
+    }
+    
+    let sql = 'SELECT * FROM trends WHERE topic ILIKE $1';
+    const params: any[] = [`%${keyword.trim()}%`];
+    
+    if (region && region !== 'all') {
+      sql += ` AND region = $${params.length + 1}`;
+      params.push(region);
+    }
+    
+    if (language) {
+      sql += ` AND language = $${params.length + 1}`;
+      params.push(language);
+    }
+    
+    sql += ` ORDER BY score DESC LIMIT $${params.length + 1}`;
+    params.push(Number(limit));
+    
+    const result = await query(sql, params);
+    res.json({ data: result.rows });
+  } catch (err: any) {
+    res.status(500).json({
+      error: {
+        code: 'SEARCH_ERROR',
+        message: err.message || 'An error occurred while searching trends',
+      },
+    });
+  }
+});
+
 // Search trends for a keyword (Google Trends API)
 router.post('/search', async (req: AuthRequest, res: Response) => {
   try {
