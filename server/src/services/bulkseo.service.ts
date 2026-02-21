@@ -369,9 +369,9 @@ export const saveBrokenLink = async (
   await query(
     `INSERT INTO broken_links (article_id, url, link_type, anchor_text, status_code, error_message, is_broken, last_checked)
      VALUES ($1, $2, $3, $4, $5, $6, true, NOW())
-     ON CONFLICT (id) DO UPDATE SET
-       status_code = $5,
-       error_message = $6,
+     ON CONFLICT (article_id, url) DO UPDATE SET
+       status_code = EXCLUDED.status_code,
+       error_message = EXCLUDED.error_message,
        is_broken = true,
        last_checked = NOW()`,
     [articleId, url, linkType, anchorText, statusCode, errorMessage]
@@ -525,8 +525,59 @@ export const getLinkSuggestions = async (
   return { suggestions: result.rows, total };
 };
 
-// Apply link suggestion
+// Apply link suggestion - actually update article content with the link
 export const applyLinkSuggestion = async (id: number): Promise<void> => {
+  // Get the suggestion details
+  const suggestionResult = await query(
+    `SELECT ls.*, sa.content as source_content, sa.slug as source_slug, s.domain as site_domain, s.platform
+     FROM link_suggestions ls
+     JOIN articles sa ON ls.source_article_id = sa.id
+     JOIN articles ta ON ls.target_article_id = ta.id
+     JOIN sites s ON sa.site_id = s.id
+     WHERE ls.id = $1`,
+    [id]
+  );
+
+  if (suggestionResult.rows.length === 0) {
+    throw new Error('Link suggestion not found');
+  }
+
+  const suggestion = suggestionResult.rows[0];
+
+  // Build target article URL based on platform
+  let targetUrl: string;
+  if (suggestion.platform === 'wordpress') {
+    targetUrl = `https://${suggestion.site_domain}/${suggestion.suggested_anchor_text?.toLowerCase().replace(/\s+/g, '-') || suggestion.target_article_id}`;
+  } else {
+    // Blogger uses post ID
+    targetUrl = `https://${suggestion.site_domain}/${suggestion.target_article_id}`;
+  }
+
+  // Find the anchor text in the content and wrap it with a link
+  const anchorText = suggestion.suggested_anchor_text || suggestion.target_article_id.toString();
+  const sourceContent = suggestion.source_content;
+
+  // Use regex to find the anchor text and wrap it with link
+  // Escape special regex characters in anchor text
+  const escapedAnchor = anchorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const linkRegex = new RegExp(`(${escapedAnchor})`, 'gi');
+
+  const linkHtml = `<a href="${targetUrl}">$1</a>`;
+
+  // Only replace first occurrence to avoid over-linking
+  const updatedContent = sourceContent.replace(linkRegex, linkHtml, 1);
+
+  if (updatedContent === sourceContent) {
+    throw new Error('Could not find anchor text in article content');
+  }
+
+  // Update the article content
+  await query(
+    `UPDATE articles SET content = $1, updated_at = NOW() WHERE id = $2`,
+    [updatedContent, suggestion.source_article_id]
+  );
+
+  // Mark the suggestion as applied
   await query(
     `UPDATE link_suggestions SET is_applied = true WHERE id = $1`,
     [id]
