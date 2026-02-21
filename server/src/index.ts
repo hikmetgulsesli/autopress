@@ -62,6 +62,16 @@ app.get('/api/health', async (_req, res) => {
   });
 });
 
+// API 404 handler - must be after all routes
+app.use('/api/*', (_req, res) => {
+  res.status(404).json({
+    error: 'Endpoint bulunamadi',
+    message: 'Istenen API endpointi mevcut degil',
+    path: _req.originalUrl,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.use(errorHandler);
 
 // Only start the server if this file is run directly (not imported for testing)
