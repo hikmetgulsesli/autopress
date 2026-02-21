@@ -6,3 +6,4 @@ dist/
 .vite/
 .worktrees/
 client/node_modules
+progress-*.txt
