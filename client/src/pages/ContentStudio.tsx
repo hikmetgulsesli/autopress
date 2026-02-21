@@ -1,23 +1,16 @@
 import { useState, useEffect } from 'react';
-<<<<<<< HEAD
 import { useSearchParams } from 'react-router-dom';
-=======
->>>>>>> origin/settings-trends
 import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle } from 'lucide-react';
 import { TipTapEditor } from '../components/TipTapEditor';
 import ImageSearch from '../components/ImageSearch';
 import ImageAttribution from '../components/ImageAttribution';
-<<<<<<< HEAD
 import api from '../services/api';
 import type { ImageSearchResult, Article } from '../types';
-=======
-import { useArticleLoader } from '../hooks/useArticleLoader';
-import type { ImageSearchResult } from '../types';
->>>>>>> origin/settings-trends
 
 export default function ContentStudio() {
   const [searchParams] = useSearchParams();
   const articleId = searchParams.get('article');
+  const topicParam = searchParams.get('topic');
   
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -25,11 +18,17 @@ export default function ContentStudio() {
   const [featuredImage, setFeaturedImage] = useState<ImageSearchResult | null>(null);
   const [showImageSearch, setShowImageSearch] = useState(false);
   
-<<<<<<< HEAD
   // Article loading states
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadedArticle, setLoadedArticle] = useState<Article | null>(null);
+
+  // Set title from topic parameter when no article is being loaded
+  useEffect(() => {
+    if (topicParam && !articleId && !title) {
+      setTitle(topicParam);
+    }
+  }, [topicParam, articleId, title]);
 
   // Fetch article from URL param
   useEffect(() => {
@@ -74,17 +73,6 @@ export default function ContentStudio() {
 
     fetchArticle();
   }, [articleId]);
-=======
-  const { article, isLoading, error } = useArticleLoader();
-
-  // Load article data when fetched from URL param
-  useEffect(() => {
-    if (article) {
-      setTitle(article.title || '');
-      setContent(article.content || '');
-    }
-  }, [article]);
->>>>>>> origin/settings-trends
 
   const handleSave = () => {
     // TODO: Save article to backend
@@ -135,7 +123,7 @@ export default function ContentStudio() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">
-            {loadedArticle ? 'Makale Düzenle' : 'İçerik Stüdyosu'}
+            {loadedArticle ? 'Makale Düzenle' : topicParam ? `Makale Oluştur: ${topicParam}` : 'İçerik Stüdyosu'}
           </h1>
           <p className="text-dark-400 mt-1">AI ile SEO uyumlu içerik üretin</p>
         </div>

@@ -47,6 +47,14 @@ describe('TrendExplorer', () => {
     },
   ];
 
+  const mockInterestData = [
+    { date: '2024-01-01', value: 25 },
+    { date: '2024-01-02', value: 45 },
+    { date: '2024-01-03', value: 60 },
+    { date: '2024-01-04', value: 80 },
+    { date: '2024-01-05', value: 100 },
+  ];
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -215,5 +223,178 @@ describe('TrendExplorer', () => {
     expect(regionSelect).toContainElement(screen.getByText('Tüm Bölgeler'));
     expect(regionSelect).toContainElement(screen.getByText('Türkiye'));
     expect(regionSelect).toContainElement(screen.getByText('ABD'));
+  });
+
+  // New tests for US-003
+  describe('Search functionality', () => {
+    it('displays search input', () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      const searchInput = screen.getByLabelText('Trend ara');
+      expect(searchInput).toBeInTheDocument();
+    });
+
+    it('filters trends by keyword', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'Yapay' } });
+
+      await waitFor(() => {
+        expect(screen.getByText('"Yapay" için 1 sonuç bulundu')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      expect(screen.queryByText('Climate Change')).not.toBeInTheDocument();
+      expect(screen.queryByText('Ekonomi')).not.toBeInTheDocument();
+    });
+
+    it('shows empty state when search has no results', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'nonexistent' } });
+
+      await waitFor(() => {
+        expect(screen.getByText('Sonuç bulunamadı')).toBeInTheDocument();
+      });
+    });
+
+    it('clears search with clear button', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      
+      render(
+      <BrowserRouter>
+        <TrendExplorer />
+      </BrowserRouter>
+    );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'Yapay' } });
+
+      await waitFor(() => {
+        expect(screen.getByText('"Yapay" için 1 sonuç bulundu')).toBeInTheDocument();
+      });
+
+      const clearButton = screen.getByLabelText('Aramayı temizle');
+      fireEvent.click(clearButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('3 trend bulundu')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Create Article button', () => {
+    it('displays Makale Oluştur button for each trend', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Check that buttons exist
+      const buttons = screen.getAllByText('Makale Oluştur');
+      expect(buttons.length).toBe(3);
+    });
+  });
+
+  describe('Interest over time chart', () => {
+    it('fetches interest data when trend is selected', async () => {
+      mockApi.get
+        .mockResolvedValueOnce({ data: mockTrends }) // trends
+        .mockResolvedValueOnce({ data: { data: mockInterestData } }); // interest data
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on first trend
+      const firstTrend = screen.getByText('Yapay Zeka').closest('li');
+      fireEvent.click(firstTrend!);
+
+      await waitFor(() => {
+        expect(screen.getByText('İlgi Grafiği: Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Check that interest API was called
+      expect(mockApi.get).toHaveBeenCalledWith(
+        expect.stringContaining('/trends/interest-over-time')
+      );
+    });
+
+    it('closes chart when close button is clicked', async () => {
+      mockApi.get
+        .mockResolvedValueOnce({ data: mockTrends })
+        .mockResolvedValueOnce({ data: { data: mockInterestData } });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on first trend to open chart
+      const firstTrend = screen.getByText('Yapay Zeka').closest('li');
+      fireEvent.click(firstTrend!);
+
+      await waitFor(() => {
+        expect(screen.getByText('İlgi Grafiği: Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Close the chart
+      const closeButton = screen.getByLabelText('Grafiği kapat');
+      fireEvent.click(closeButton);
+
+      await waitFor(() => {
+        expect(screen.queryByText('İlgi Grafiği: Yapay Zeka')).not.toBeInTheDocument();
+      });
+    });
   });
 });
