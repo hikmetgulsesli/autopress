@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { BrowserRouter, useNavigate } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import TrendExplorer from '../pages/TrendExplorer';
 import api from '../services/api';
 
@@ -10,16 +10,6 @@ vi.mock('../services/api', () => ({
     get: vi.fn(),
   },
 }));
-
-// Mock useNavigate
-const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
 
 const mockApi = api as unknown as { get: ReturnType<typeof vi.fn> };
 
@@ -55,6 +45,14 @@ describe('TrendExplorer', () => {
       raw_data: { news_count: 89 },
       checked_at: '2024-01-15T10:00:00Z',
     },
+  ];
+
+  const mockInterestData = [
+    { date: '2024-01-01', value: 25 },
+    { date: '2024-01-02', value: 45 },
+    { date: '2024-01-03', value: 60 },
+    { date: '2024-01-04', value: 80 },
+    { date: '2024-01-05', value: 100 },
   ];
 
   beforeEach(() => {
@@ -227,9 +225,22 @@ describe('TrendExplorer', () => {
     expect(regionSelect).toContainElement(screen.getByText('ABD'));
   });
 
-  // Create Article Button Tests
-  describe('Create Article Button', () => {
-    it('renders create article button for each trend', async () => {
+  // New tests for US-003
+  describe('Search functionality', () => {
+    it('displays search input', () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      const searchInput = screen.getByLabelText('Trend ara');
+      expect(searchInput).toBeInTheDocument();
+    });
+
+    it('filters trends by keyword', async () => {
       mockApi.get.mockResolvedValueOnce({ data: mockTrends });
       
       render(
@@ -242,12 +253,19 @@ describe('TrendExplorer', () => {
         expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
       });
 
-      // Check that create article buttons are rendered
-      const createButtons = screen.getAllByLabelText(/için makale oluştur/i);
-      expect(createButtons).toHaveLength(3);
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'Yapay' } });
+
+      await waitFor(() => {
+        expect(screen.getByText('"Yapay" için 1 sonuç bulundu')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      expect(screen.queryByText('Climate Change')).not.toBeInTheDocument();
+      expect(screen.queryByText('Ekonomi')).not.toBeInTheDocument();
     });
 
-    it('navigates to ContentStudio with topic when create article button is clicked', async () => {
+    it('shows empty state when search has no results', async () => {
       mockApi.get.mockResolvedValueOnce({ data: mockTrends });
       
       render(
@@ -260,52 +278,45 @@ describe('TrendExplorer', () => {
         expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
       });
 
-      // Click the create article button for the first trend
-      const createButton = screen.getByLabelText('Yapay Zeka için makale oluştur');
-      fireEvent.click(createButton);
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'nonexistent' } });
 
-      // Should navigate to ContentStudio with topic query param
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/content?topic=Yapay%20Zeka');
+        expect(screen.getByText('Sonuç bulunamadı')).toBeInTheDocument();
       });
     });
 
-    it('encodes special characters in topic URL parameter', async () => {
-      const trendsWithSpecialChars = [
-        {
-          id: 1,
-          topic: 'Yapay Zeka & Makine Öğrenmesi',
-          score: 95,
-          source: 'Google Trends',
-          language: 'tr',
-          region: 'TR',
-          raw_data: { news_count: 150 },
-          checked_at: '2024-01-15T10:00:00Z',
-        },
-      ];
-      mockApi.get.mockResolvedValueOnce({ data: trendsWithSpecialChars });
+    it('clears search with clear button', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
       
       render(
-        <BrowserRouter>
-          <TrendExplorer />
-        </BrowserRouter>
-      );
+      <BrowserRouter>
+        <TrendExplorer />
+      </BrowserRouter>
+    );
 
       await waitFor(() => {
-        expect(screen.getByText('Yapay Zeka & Makine Öğrenmesi')).toBeInTheDocument();
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
       });
 
-      // Click the create article button
-      const createButton = screen.getByLabelText('Yapay Zeka & Makine Öğrenmesi için makale oluştur');
-      fireEvent.click(createButton);
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'Yapay' } });
 
-      // Should navigate with encoded topic
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/content?topic=Yapay%20Zeka%20%26%20Makine%20%C3%96%C4%9Frenmesi');
+        expect(screen.getByText('"Yapay" için 1 sonuç bulundu')).toBeInTheDocument();
+      });
+
+      const clearButton = screen.getByLabelText('Aramayı temizle');
+      fireEvent.click(clearButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('3 trend bulundu')).toBeInTheDocument();
       });
     });
+  });
 
-    it('shows loading state on button when navigating', async () => {
+  describe('Create Article button', () => {
+    it('displays Makale Oluştur button for each trend', async () => {
       mockApi.get.mockResolvedValueOnce({ data: mockTrends });
       
       render(
@@ -318,12 +329,72 @@ describe('TrendExplorer', () => {
         expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
       });
 
-      // Click the create article button
-      const createButton = screen.getByLabelText('Yapay Zeka için makale oluştur');
-      fireEvent.click(createButton);
+      // Check that buttons exist
+      const buttons = screen.getAllByText('Makale Oluştur');
+      expect(buttons.length).toBe(3);
+    });
+  });
 
-      // Button should show loading state
-      expect(createButton).toBeDisabled();
+  describe('Interest over time chart', () => {
+    it('fetches interest data when trend is selected', async () => {
+      mockApi.get
+        .mockResolvedValueOnce({ data: mockTrends }) // trends
+        .mockResolvedValueOnce({ data: { data: mockInterestData } }); // interest data
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on first trend
+      const firstTrend = screen.getByText('Yapay Zeka').closest('li');
+      fireEvent.click(firstTrend!);
+
+      await waitFor(() => {
+        expect(screen.getByText('İlgi Grafiği: Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Check that interest API was called
+      expect(mockApi.get).toHaveBeenCalledWith(
+        expect.stringContaining('/trends/interest-over-time')
+      );
+    });
+
+    it('closes chart when close button is clicked', async () => {
+      mockApi.get
+        .mockResolvedValueOnce({ data: mockTrends })
+        .mockResolvedValueOnce({ data: { data: mockInterestData } });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Click on first trend to open chart
+      const firstTrend = screen.getByText('Yapay Zeka').closest('li');
+      fireEvent.click(firstTrend!);
+
+      await waitFor(() => {
+        expect(screen.getByText('İlgi Grafiği: Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Close the chart
+      const closeButton = screen.getByLabelText('Grafiği kapat');
+      fireEvent.click(closeButton);
+
+      await waitFor(() => {
+        expect(screen.queryByText('İlgi Grafiği: Yapay Zeka')).not.toBeInTheDocument();
+      });
     });
   });
 

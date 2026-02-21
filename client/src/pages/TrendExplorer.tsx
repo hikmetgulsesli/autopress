@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, Globe, AlertCircle, Loader2, FilePlus, Search, X } from 'lucide-react';
+import { TrendingUp, Globe, AlertCircle, Loader2, FilePlus, Search, FileText, X } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
 
 interface Trend {
@@ -14,6 +15,11 @@ interface Trend {
   checked_at: string;
 }
 
+interface InterestDataPoint {
+  date: string;
+  value: number;
+}
+
 interface TrendsResponse {
   data: Trend[];
   meta?: {
@@ -21,6 +27,10 @@ interface TrendsResponse {
     limit: number;
     total: number;
   };
+}
+
+interface InterestOverTimeResponse {
+  data: InterestDataPoint[];
 }
 
 const REGIONS = [
@@ -39,33 +49,40 @@ const REGIONS = [
 ];
 
 export default function TrendExplorer() {
+  const navigate = useNavigate();
   const [trends, setTrends] = useState<Trend[]>([]);
+  const [filteredTrends, setFilteredTrends] = useState<Trend[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [creatingArticleId, setCreatingArticleId] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
   const [isSearching, setIsSearching] = useState<boolean>(false);
-  const navigate = useNavigate();
+
+  // Selected trend for chart (US-007)
+  const [selectedTrend, setSelectedTrend] = useState<Trend | null>(null);
+  const [interestData, setInterestData] = useState<InterestDataPoint[]>([]);
+  const [chartLoading, setChartLoading] = useState<boolean>(false);
+  const [chartError, setChartError] = useState<string | null>(null);
 
   const fetchTrends = useCallback(async (region: string) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const params = new URLSearchParams();
       if (region !== 'all') {
         params.append('region', region);
       }
       params.append('limit', '50');
-      
+
       const response = await api.get(`/trends?${params.toString()}`);
       const data = response.data;
-      
+
       // Handle both array response and wrapped response
       const trendsData = Array.isArray(data) ? data : data.data || [];
       setTrends(trendsData);
+      setFilteredTrends(trendsData);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || err.message || 'Trendler yüklenirken bir hata oluştu');
     } finally {
@@ -76,11 +93,11 @@ export default function TrendExplorer() {
   const handleSearch = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    
+
     setIsSearching(true);
     setSearchLoading(true);
     setError(null);
-    
+
     try {
       const params = new URLSearchParams();
       params.append('keyword', searchQuery.trim());
@@ -88,13 +105,14 @@ export default function TrendExplorer() {
         params.append('region', selectedRegion);
       }
       params.append('limit', '50');
-      
+
       const response = await api.get(`/trends/search?${params.toString()}`);
       const data = response.data;
-      
+
       // Handle both array response and wrapped response
       const trendsData = Array.isArray(data) ? data : data.data || [];
       setTrends(trendsData);
+      setFilteredTrends(trendsData);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || err.message || 'Arama sırasında bir hata oluştu');
     } finally {
@@ -108,18 +126,76 @@ export default function TrendExplorer() {
     fetchTrends(selectedRegion);
   }, [selectedRegion, fetchTrends]);
 
+  const fetchInterestOverTime = useCallback(async (keyword: string) => {
+    setChartLoading(true);
+    setChartError(null);
+
+    try {
+      const params = new URLSearchParams();
+      params.append('keyword', keyword);
+      params.append('region', selectedRegion !== 'all' ? selectedRegion : 'TR');
+
+      const response = await api.get<InterestOverTimeResponse>(`/trends/interest-over-time?${params.toString()}`);
+      const data = response.data.data || [];
+      setInterestData(data);
+    } catch (err: any) {
+      setChartError(err.response?.data?.error?.message || err.message || 'İlgi verisi yüklenirken bir hata oluştu');
+      setInterestData([]);
+    } finally {
+      setChartLoading(false);
+    }
+  }, [selectedRegion]);
+
+  // Filter trends when search query changes (client-side filtering)
+  useEffect(() => {
+    if (!searchQuery.trim() || isSearching) {
+      setFilteredTrends(trends);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = trends.filter(trend =>
+        trend.topic.toLowerCase().includes(query)
+      );
+      setFilteredTrends(filtered);
+    }
+  }, [searchQuery, trends, isSearching]);
+
   useEffect(() => {
     fetchTrends(selectedRegion);
   }, [selectedRegion, fetchTrends]);
 
+  // Fetch interest data when a trend is selected
+  useEffect(() => {
+    if (selectedTrend) {
+      fetchInterestOverTime(selectedTrend.topic);
+    } else {
+      setInterestData([]);
+    }
+  }, [selectedTrend, fetchInterestOverTime]);
+
   const handleRegionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedRegion(e.target.value);
+    setSelectedTrend(null);
   };
 
-  const handleCreateArticle = (topic: string, trendId: number) => {
-    setCreatingArticleId(trendId);
-    // Navigate to ContentStudio with topic pre-filled
-    navigate(`/content?topic=${encodeURIComponent(topic)}`);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleTrendSelect = (trend: Trend) => {
+    setSelectedTrend(prev => prev?.id === trend.id ? null : trend);
+  };
+
+  const handleCreateArticle = (trend: Trend, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Navigate to Content Studio with the trend pre-filled
+    const params = new URLSearchParams();
+    params.set('topic', trend.topic);
+    navigate(`/content?${params.toString()}`);
+  };
+
+  const handleCloseChart = () => {
+    setSelectedTrend(null);
+    setInterestData([]);
   };
 
   const getNewsCount = (trend: Trend): number => {
@@ -143,6 +219,11 @@ export default function TrendExplorer() {
     return 'bg-dark-700';
   };
 
+  const formatDate = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -151,7 +232,7 @@ export default function TrendExplorer() {
           <h1 className="text-2xl font-bold text-white">Trend Explorer</h1>
           <p className="text-dark-400 mt-1">Güncel trendleri keşfedin ve analiz edin</p>
         </div>
-        
+
         {/* Search Form */}
         <form onSubmit={handleSearch} className="flex items-center gap-2">
           <div className="relative">
@@ -162,7 +243,7 @@ export default function TrendExplorer() {
               id="trend-search"
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
               placeholder="Trend ara..."
               className="input pr-10 min-w-[200px] cursor-text"
               aria-label="Trend ara"
@@ -216,7 +297,7 @@ export default function TrendExplorer() {
             ))}
           </select>
         </div>
-        
+
         {isSearching && (
           <button
             onClick={handleClearSearch}
@@ -230,8 +311,8 @@ export default function TrendExplorer() {
       {/* Loading State */}
       {loading && (
         <div className="card p-12 text-center">
-          <Loader2 
-            className="w-10 h-10 text-primary-400 mx-auto mb-4 animate-spin" 
+          <Loader2
+            className="w-10 h-10 text-primary-400 mx-auto mb-4 animate-spin"
             aria-hidden="true"
           />
           <p className="text-dark-400">Trendler yükleniyor...</p>
@@ -240,7 +321,7 @@ export default function TrendExplorer() {
 
       {/* Error State */}
       {!loading && error && (
-        <div 
+        <div
           className="card p-8 text-center border-error/30"
           role="alert"
           aria-live="assertive"
@@ -260,46 +341,148 @@ export default function TrendExplorer() {
       )}
 
       {/* Empty State */}
-      {!loading && !error && trends.length === 0 && (
+      {!loading && !error && filteredTrends.length === 0 && (
         <div className="card p-12 text-center">
           <div className="w-16 h-16 bg-primary-400/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <TrendingUp className="w-8 h-8 text-primary-400" aria-hidden="true" />
           </div>
-          <h3 className="text-lg font-medium text-white mb-2">Henüz trend yok</h3>
+          <h3 className="text-lg font-medium text-white mb-2">
+            {searchQuery ? 'Sonuç bulunamadı' : 'Henüz trend yok'}
+          </h3>
           <p className="text-dark-400">
-            {selectedRegion === 'all' 
-              ? 'Şu anda görüntülenecek trend bulunmuyor.' 
-              : 'Seçili bölge için henüz trend verisi bulunmuyor.'}
+            {searchQuery
+              ? `"${searchQuery}" için arama sonucu bulunmuyor.`
+              : selectedRegion === 'all'
+                ? 'Şu anda görüntülenecek trend bulunmuyor.'
+                : 'Seçili bölge için henüz trend verisi bulunmuyor.'}
           </p>
         </div>
       )}
 
+      {/* Interest Over Time Chart */}
+      {!loading && !error && selectedTrend && (
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-semibold text-white">
+                İlgi Grafiği: {selectedTrend.topic}
+              </h2>
+              <p className="text-sm text-dark-400 mt-1">
+                Zaman içindeki ilgi trendi
+              </p>
+            </div>
+            <button
+              onClick={handleCloseChart}
+              className="p-2 rounded-lg hover:bg-dark-700 cursor-pointer transition-colors"
+              aria-label="Grafiği kapat"
+            >
+              <X className="w-5 h-5 text-dark-400" aria-hidden="true" />
+            </button>
+          </div>
+
+          {chartLoading && (
+            <div className="h-[300px] flex items-center justify-center">
+              <Loader2
+                className="w-8 h-8 text-primary-400 animate-spin"
+                aria-hidden="true"
+              />
+            </div>
+          )}
+
+          {chartError && (
+            <div className="h-[300px] flex items-center justify-center">
+              <p className="text-error">{chartError}</p>
+            </div>
+          )}
+
+          {!chartLoading && !chartError && interestData.length > 0 && (
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={interestData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#9CA3AF"
+                    tickFormatter={formatDate}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px'
+                    }}
+                    labelStyle={{ color: '#F9FAFB' }}
+                    formatter={(value: number) => [value, 'İlgi']}
+                    labelFormatter={formatDate}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#06B6D4"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 6, fill: '#06B6D4' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {!chartLoading && !chartError && interestData.length === 0 && (
+            <div className="h-[300px] flex items-center justify-center">
+              <p className="text-dark-400">Bu trend için ilgi verisi bulunmuyor</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Trends List */}
-      {!loading && !error && trends.length > 0 && (
+      {!loading && !error && filteredTrends.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between text-sm text-dark-400 px-1">
-            <span>{trends.length} trend bulundu</span>
+            <span>
+              {searchQuery
+                ? `"${searchQuery}" için ${filteredTrends.length} sonuç bulundu`
+                : `${filteredTrends.length} trend bulundu`}
+            </span>
             <span className="hidden sm:inline">Skor ve haber sayısına göre sıralandı</span>
           </div>
-          
+
           <ul className="space-y-3" role="list">
-            {trends.map((trend, index) => {
+            {filteredTrends.map((trend, index) => {
               const newsCount = getNewsCount(trend);
               const scoreColor = getScoreColor(trend.score);
               const scoreBgColor = getScoreBgColor(trend.score);
-              
+              const isSelected = selectedTrend?.id === trend.id;
+
               return (
                 <li
                   key={trend.id}
-                  className="card p-4 sm:p-5 hover:-translate-y-0.5 transition-transform duration-200"
+                  className={`card p-4 sm:p-5 hover:-translate-y-0.5 transition-transform duration-200 cursor-pointer ${
+                    isSelected ? 'ring-2 ring-primary-400' : ''
+                  }`}
                   style={{ transitionDelay: `${Math.min(index * 50, 300)}ms` }}
+                  onClick={() => handleTrendSelect(trend)}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isSelected}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      handleTrendSelect(trend);
+                    }
+                  }}
                 >
                   <div className="flex items-start sm:items-center gap-4">
                     {/* Rank Number */}
                     <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-sm font-medium text-dark-400">
                       {index + 1}
                     </div>
-                    
+
                     {/* Trend Info */}
                     <div className="flex-1 min-w-0">
                       <h3 className="text-white font-medium truncate" title={trend.topic}>
@@ -314,26 +497,9 @@ export default function TrendExplorer() {
                         <span>Kaynak: {trend.source}</span>
                       </div>
                     </div>
-                    
+
                     {/* Stats */}
                     <div className="flex items-center gap-3 sm:gap-6">
-                      {/* Create Article Button */}
-                      <button
-                        onClick={() => handleCreateArticle(trend.topic, trend.id)}
-                        disabled={creatingArticleId === trend.id}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none"
-                        aria-label={`${trend.topic} için makale oluştur`}
-                      >
-                        {creatingArticleId === trend.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                        ) : (
-                          <FilePlus className="w-4 h-4" aria-hidden="true" />
-                        )}
-                        <span className="hidden sm:inline text-sm font-medium">
-                          {creatingArticleId === trend.id ? 'Oluşturuluyor...' : 'Makale Oluştur'}
-                        </span>
-                      </button>
-
                       {/* News Count */}
                       <div className="text-right hidden sm:block">
                         <p className="text-xs text-dark-400 uppercase tracking-wide">Haber</p>
@@ -341,13 +507,23 @@ export default function TrendExplorer() {
                           {newsCount > 0 ? newsCount.toLocaleString('tr-TR') : '-'}
                         </p>
                       </div>
-                      
+
                       {/* Score */}
                       <div className={`flex-shrink-0 px-3 py-1.5 rounded-lg ${scoreBgColor}`}>
                         <span className={`text-sm font-semibold tabular-nums ${scoreColor}`}>
                           {trend.score}
                         </span>
                       </div>
+
+                      {/* Create Article Button */}
+                      <button
+                        onClick={(e) => handleCreateArticle(trend, e)}
+                        className="btn btn-primary btn-sm flex items-center gap-1.5"
+                        aria-label={`${trend.topic} için makale oluştur`}
+                      >
+                        <FileText className="w-4 h-4" aria-hidden="true" />
+                        <span className="hidden sm:inline">Makale Oluştur</span>
+                      </button>
                     </div>
                   </div>
                 </li>

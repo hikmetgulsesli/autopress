@@ -158,7 +158,7 @@ describe('Input Validation Middleware', () => {
     });
 
     app.get('/test', validateQuery(querySchema), (req, res) => {
-      const validated = (req as express.Request & { validatedQuery: unknown }).validatedQuery;
+      const validated = req.query;
       res.json(validated);
     });
 

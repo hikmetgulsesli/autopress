@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle, Search, FileText, Clock, Hash } from 'lucide-react';
+import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle, Search, FileText, Clock, Hash, Globe, Languages } from 'lucide-react';
 import { TipTapEditor } from '../components/TipTapEditor';
 import { SEOPanel } from '../components/SEOPanel';
 import ImageSearch from '../components/ImageSearch';
 import ImageAttribution from '../components/ImageAttribution';
 import api from '../services/api';
-import type { ImageSearchResult, Article } from '../types';
+import { notify } from '../utils/toast';
+import type { ImageSearchResult, Article, Site } from '../types';
 
 type TabType = 'featured-image' | 'seo' | 'ai-assistant';
 
@@ -14,21 +15,33 @@ export default function ContentStudio() {
   const [searchParams] = useSearchParams();
   const articleId = searchParams.get('article');
   const topicParam = searchParams.get('topic');
-  
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isPreview, setIsPreview] = useState(false);
   const [featuredImage, setFeaturedImage] = useState<ImageSearchResult | null>(null);
   const [showImageSearch, setShowImageSearch] = useState(false);
-  
-  // SEO state
+
+  // SEO state (US-006)
   const [metaTitle, setMetaTitle] = useState('');
   const [metaDescription, setMetaDescription] = useState('');
   const [slug, setSlug] = useState('');
-  
+
+  // Site and Language Selection (US-007)
+  const [sites, setSites] = useState<Site[]>([]);
+  const [selectedSiteId, setSelectedSiteId] = useState<number | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('tr');
+  const [isLoadingSites, setIsLoadingSites] = useState(false);
+
+  // Available languages
+  const availableLanguages = [
+    { code: 'tr', name: 'Türkçe' },
+    { code: 'en', name: 'English' },
+  ];
+
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('featured-image');
-  
+
   // Article loading states
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,20 +61,20 @@ export default function ContentStudio() {
     const fetchArticle = async () => {
       setIsLoading(true);
       setError(null);
-      
+
       try {
         const response = await api.get<Article>(`/articles/${articleId}`);
         const article = response.data;
-        
+
         setLoadedArticle(article);
         setTitle(article.title || '');
         setContent(article.content || '');
-        
-        // Set SEO data
+
+        // Set SEO data (US-006)
         setMetaTitle(article.meta_title || '');
         setMetaDescription(article.meta_description || '');
         setSlug(article.slug || '');
-        
+
         // Set featured image if available
         if (article.featured_image_url) {
           setFeaturedImage({
@@ -90,22 +103,74 @@ export default function ContentStudio() {
     fetchArticle();
   }, [articleId]);
 
-  const handleSave = () => {
+  // Fetch user's sites on mount (US-007)
+  useEffect(() => {
+    const fetchSites = async () => {
+      setIsLoadingSites(true);
+      try {
+        const response = await api.get<Site[]>('/sites');
+        setSites(response.data);
+        // Set default to first site if available
+        if (response.data.length > 0 && !selectedSiteId) {
+          setSelectedSiteId(response.data[0].id);
+          // Also set language from site default
+          if (response.data[0].language) {
+            setSelectedLanguage(response.data[0].language);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch sites:', err);
+      } finally {
+        setIsLoadingSites(false);
+      }
+    };
+
+    fetchSites();
+  }, []);
+
+  // Load article's site and language when article is loaded (US-007)
+  useEffect(() => {
+    if (loadedArticle) {
+      if (loadedArticle.site_id) {
+        setSelectedSiteId(loadedArticle.site_id);
+      }
+      if (loadedArticle.language) {
+        setSelectedLanguage(loadedArticle.language);
+      }
+    }
+  }, [loadedArticle]);
+
+  const handleSave = async () => {
     // Calculate word count and reading time
     const text = `${title} ${content}`.trim();
     const wordCount = text ? text.split(/\s+/).filter(w => w.length > 0).length : 0;
     const readingTime = Math.ceil(wordCount / 200);
-    
-    console.log('Saving article:', { 
-      title, 
-      content, 
-      featuredImage,
+
+    const articleData = {
+      title,
+      content,
+      site_id: selectedSiteId,
+      language: selectedLanguage,
+      featured_image_url: featuredImage?.url || null,
       meta_title: metaTitle,
       meta_description: metaDescription,
       slug,
       word_count: wordCount,
-      reading_time: readingTime
-    });
+      reading_time: readingTime,
+    };
+
+    try {
+      if (loadedArticle?.id) {
+        await api.put(`/articles/${loadedArticle.id}`, articleData);
+        notify.success('Makale ba\u015Far\u0131yla g\u00FCncellendi');
+      } else {
+        await api.post('/articles', articleData);
+        notify.success('Makale ba\u015Far\u0131yla kaydedildi');
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'Bir hata olu\u015Ftu';
+      notify.error(errorMessage);
+    }
   };
 
   const handleSelectImage = (image: ImageSearchResult) => {
@@ -123,7 +188,7 @@ export default function ContentStudio() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 data-testid="loading-spinner" className="w-8 h-8 text-primary-400 animate-spin" />
-          <p className="text-text-muted">Makale yükleniyor...</p>
+          <p className="text-text-muted">Makale y\u00FCkleniyor...</p>
         </div>
       </div>
     );
@@ -138,7 +203,7 @@ export default function ContentStudio() {
             <AlertCircle className="w-6 h-6 text-error" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-text">Yükleme Hatası</h2>
+            <h2 className="text-lg font-semibold text-text">Y\u00FCkleme Hatas\u0131</h2>
             <p className="text-text-muted mt-1">{error}</p>
           </div>
         </div>
@@ -150,11 +215,60 @@ export default function ContentStudio() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">
-            {loadedArticle ? 'Makale Düzenle' : topicParam ? `Makale Oluştur: ${topicParam}` : 'İçerik Stüdyosu'}
+            {loadedArticle ? 'Makale D\u00FCzenle' : topicParam ? `Makale Olu\u015Ftur: ${topicParam}` : '\u0130\u00E7erik St\u00FCdyosu'}
           </h1>
-          <p className="text-dark-400 mt-1">AI ile SEO uyumlu içerik üretin</p>
+          <p className="text-dark-400 mt-1">AI ile SEO uyumlu i\u00E7erik \u00FCretin</p>
+
+          {/* Site and Language Selection (US-007) */}
+          <div className="flex items-center gap-3 mt-4">
+            {/* Site Dropdown */}
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-text-muted" />
+              <select
+                id="site-select"
+                name="site"
+                aria-label="Site se\u00E7in"
+                value={selectedSiteId || ''}
+                onChange={(e) => setSelectedSiteId(Number(e.target.value))}
+                disabled={isLoadingSites}
+                className="px-3 py-2 bg-surface-alt border border-border rounded-lg text-text text-sm focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200 cursor-pointer min-w-[180px]"
+                style={{ backgroundColor: 'var(--color-surface-alt)', borderColor: 'var(--color-border)' }}
+              >
+                <option value="" disabled>Site se\u00E7in</option>
+                {sites.map((site) => (
+                  <option key={site.id} value={site.id}>
+                    {site.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Language Dropdown */}
+            <div className="flex items-center gap-2">
+              <Languages className="w-4 h-4 text-text-muted" />
+              <select
+                id="language-select"
+                name="language"
+                aria-label="Dil se\u00E7in"
+                value={selectedLanguage}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
+                className="px-3 py-2 bg-surface-alt border border-border rounded-lg text-text text-sm focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200 cursor-pointer min-w-[120px]"
+                style={{ backgroundColor: 'var(--color-surface-alt)', borderColor: 'var(--color-border)' }}
+              >
+                {availableLanguages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {isLoadingSites && (
+              <Loader2 className="w-4 h-4 text-text-muted animate-spin" />
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -163,15 +277,15 @@ export default function ContentStudio() {
             className={`
               inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium
               transition-all duration-200 cursor-pointer
-              ${isPreview 
-                ? 'bg-primary-400/20 text-primary-400' 
+              ${isPreview
+                ? 'bg-primary-400/20 text-primary-400'
                 : 'bg-surface-alt text-text-muted hover:text-text hover:bg-surface-elevated'
               }
               focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface
             `}
           >
             <Eye className="w-4 h-4" />
-            {isPreview ? 'Düzenle' : 'Önizleme'}
+            {isPreview ? 'D\u00FCzenle' : '\u00D6nizleme'}
           </button>
           <button
             type="button"
@@ -188,7 +302,7 @@ export default function ContentStudio() {
       {isLoading && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 text-primary-400 animate-spin" style={{ color: 'var(--color-primary-400)' }} />
-          <span className="ml-3 text-text-muted">Makale yükleniyor...</span>
+          <span className="ml-3 text-text-muted">Makale y\u00FCkleniyor...</span>
         </div>
       )}
 
@@ -211,14 +325,14 @@ export default function ContentStudio() {
             {/* Title Input */}
           <div className="space-y-2">
             <label htmlFor="article-title" className="block text-sm font-medium text-text">
-              Başlık
+              Ba\u015Fl\u0131k
             </label>
             <input
               id="article-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Makale başlığını girin..."
+              placeholder="Makale ba\u015Fl\u0131\u011F\u0131n\u0131 girin..."
               className="w-full px-4 py-3 bg-surface-alt border border-border rounded-xl text-text text-lg font-medium placeholder:text-text-muted focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200"
             />
           </div>
@@ -226,19 +340,18 @@ export default function ContentStudio() {
           {/* Content Editor */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-text">
-              İçerik
+              \u0130\u00E7erik
             </label>
             {isPreview ? (
-              <div 
+              <div
                 className="border border-border rounded-xl overflow-hidden bg-surface-alt min-h-[300px] px-4 py-3 prose prose-invert prose-zinc max-w-none"
-                dangerouslySetInnerHTML={{ __html: content }}
               />
             ) : (
               <TipTapEditor
                 key={articleId}
                 content={content}
                 onChange={setContent}
-                placeholder="Makale içeriğini yazmaya başlayın..."
+                placeholder="Makale i\u00E7eri\u011Fini yazmaya ba\u015Flay\u0131n..."
               />
             )}
           </div>
@@ -260,7 +373,7 @@ export default function ContentStudio() {
               `}
             >
               <ImageIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Görsel</span>
+              <span className="hidden sm:inline">G\u00F6rsel</span>
             </button>
             <button
               type="button"
@@ -300,7 +413,7 @@ export default function ContentStudio() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <ImageIcon className="w-5 h-5 text-primary-400" style={{ color: 'var(--color-primary-400)' }} />
-                    <h3 className="font-semibold text-text">Öne Çıkan Görsel</h3>
+                    <h3 className="font-semibold text-text">\u00D6ne \u00C7\u0131kan G\u00F6rsel</h3>
                   </div>
                   {featuredImage && (
                     <button
@@ -333,7 +446,7 @@ export default function ContentStudio() {
                     style={{ borderColor: 'var(--color-border)' }}
                   >
                     <ImageIcon className="w-8 h-8" />
-                    <span className="text-sm font-medium">Görsel Seç</span>
+                    <span className="text-sm font-medium">G\u00F6rsel Se\u00E7</span>
                     <span className="text-xs">Unsplash'tan ara</span>
                   </button>
                 )}
@@ -344,7 +457,7 @@ export default function ContentStudio() {
                     style={{ borderColor: 'var(--color-border)' }}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-text">Görsel Ara</span>
+                      <span className="text-sm font-medium text-text">G\u00F6rsel Ara</span>
                       <button
                         onClick={() => setShowImageSearch(false)}
                         className="text-text-muted hover:text-text transition-colors p-1"
@@ -353,7 +466,7 @@ export default function ContentStudio() {
                         <X className="w-4 h-4" />
                       </button>
                     </div>
-                    <ImageSearch 
+                    <ImageSearch
                       onSelect={handleSelectImage}
                     />
                   </div>
@@ -361,7 +474,7 @@ export default function ContentStudio() {
               </div>
             )}
 
-            {/* SEO Tab */}
+            {/* SEO Tab (US-006) */}
             {activeTab === 'seo' && (
               <SEOPanel
                 title={title}
@@ -386,7 +499,7 @@ export default function ContentStudio() {
                 <div className="flex-1">
                   <h3 className="font-semibold text-text">AI Asistan</h3>
                   <p className="text-text-muted text-sm mt-1">
-                    Yapay zeka ile içerik önerileri alın.
+                    Yapay zeka ile i\u00E7erik \u00F6nerileri al\u0131n.
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
                     <button
@@ -395,7 +508,7 @@ export default function ContentStudio() {
                       style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
                     >
                       <PenTool className="w-3 h-3" />
-                      Başlık Öner
+                      Ba\u015Fl\u0131k \u00D6ner
                     </button>
                     <button
                       type="button"

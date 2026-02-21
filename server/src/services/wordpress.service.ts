@@ -429,3 +429,21 @@ export const getTags = async (): Promise<Array<{ id: number; name: string }>> =>
 
   return wp.getTags();
 };
+
+// Test connection to WordPress site
+export const testConnection = async (config: WordPressConfig): Promise<{ success: boolean; message: string }> => {
+  try {
+    const wp = new WordPressClient(config);
+    // Try to fetch categories as a lightweight test
+    await wp.getCategories();
+    return { success: true, message: 'WordPress connection successful' };
+  } catch (err: any) {
+    if (err.code === 'AUTH_ERROR') {
+      return { success: false, message: 'Invalid WordPress credentials' };
+    }
+    if (err.code === 'MISSING_CONFIG' || err.code === 'MISSING_AUTH') {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: `Connection failed: ${err.message || 'Unknown error'}` };
+  }
+};

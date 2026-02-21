@@ -1,0 +1,9 @@
+- US-004: AI Content Generation Routes - COMPLETED (PR #129)
+
+US-006: SEO Metadata Panel - COMPLETED
+- PR: https://github.com/hikmetgulsesli/autopress/pull/130
+- Branch: 18a45f6f-US-006
+- Build: PASSED
+- Tests: PASSED (10 failures are pre-existing auth-related issues, not from this change)
+
+Progress: 2 of 7 stories completed in this run

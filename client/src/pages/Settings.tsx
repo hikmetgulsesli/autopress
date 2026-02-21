@@ -1,748 +1,802 @@
 import { useState, useEffect } from 'react';
-import { 
-  User, 
-  Lock, 
-  Settings as SettingsIcon, 
-  Bell, 
-  Shield,
-  Key,
-  Mail,
-  Smartphone,
-  CheckCircle,
-  XCircle,
-  TrendingUp,
-  Save,
-  Loader2,
-  Eye,
-  EyeOff,
-  AlertCircle
-} from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
+import { Settings as SettingsIcon, Key, Globe, Cpu, Clock, FileText, Eye, EyeOff, Save, Loader2, Check } from 'lucide-react';
 import api from '../services/api';
-import type { UpdateProfileRequest, ChangePasswordRequest, NotificationSettings } from '../types';
+import type { ApiKeys, ApiKeyField, GeneralSettings, LanguageOption, AIModelOption } from '../types';
 
-type TabId = 'profile' | 'general' | 'api-keys' | 'notifications' | 'security';
+type Tab = 'general' | 'api-keys';
 
-interface Tab {
-  id: TabId;
-  label: string;
-  icon: React.ReactNode;
-}
-
-const tabs: Tab[] = [
-  { id: 'profile', label: 'Profil', icon: <User className="w-4 h-4" /> },
-  { id: 'general', label: 'Genel', icon: <SettingsIcon className="w-4 h-4" /> },
-  { id: 'api-keys', label: 'API Anahtarları', icon: <Key className="w-4 h-4" /> },
-  { id: 'notifications', label: 'Bildirimler', icon: <Bell className="w-4 h-4" /> },
-  { id: 'security', label: 'Güvenlik', icon: <Shield className="w-4 h-4" /> },
+// Available languages
+const LANGUAGES: LanguageOption[] = [
+  { code: 'tr', name: 'Türkçe' },
+  { code: 'en', name: 'English' },
+  { code: 'de', name: 'Deutsch' },
+  { code: 'fr', name: 'Français' },
+  { code: 'es', name: 'Español' },
+  { code: 'it', name: 'Italiano' },
+  { code: 'pt', name: 'Português' },
+  { code: 'ru', name: 'Русский' },
+  { code: 'ar', name: 'العربية' },
+  { code: 'zh', name: '中文' },
 ];
 
-// Toggle Switch Component
-interface ToggleSwitchProps {
+// Available AI models
+const AI_MODELS: AIModelOption[] = [
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
+  { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'OpenAI' },
+  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI' },
+  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+  { id: 'claude-3-haiku', name: 'Claude 3 Haiku', provider: 'Anthropic' },
+];
+
+const API_KEY_FIELDS: ApiKeyField[] = [
+  {
+    key: 'openai_api_key',
+    label: 'OpenAI API Key',
+    placeholder: 'sk-...',
+    description: 'OpenAI API anahtarı, içerik üretimi için kullanılır',
+  },
+  {
+    key: 'unsplash_api_key',
+    label: 'Unsplash API Key',
+    placeholder: 'Enter Unsplash API key',
+    description: 'Unsplash API anahtarı, görseller için kullanılır',
+  },
+  {
+    key: 'google_trends_api_key',
+    label: 'Google Trends API Key',
+    placeholder: 'Enter Google Trends API key',
+    description: 'Google Trends API anahtarı, trend analizi için kullanılır',
+  },
+  {
+    key: 'search_console_client_id',
+    label: 'Search Console Client ID',
+    placeholder: 'Enter Client ID',
+    description: 'Google Search Console OAuth Client ID',
+  },
+  {
+    key: 'search_console_client_secret',
+    label: 'Search Console Client Secret',
+    placeholder: 'Enter Client Secret',
+    description: 'Google Search Console OAuth Client Secret',
+  },
+  {
+    key: 'search_console_refresh_token',
+    label: 'Search Console Refresh Token',
+    placeholder: 'Enter Refresh Token',
+    description: 'Google Search Console OAuth Refresh Token',
+  },
+];
+
+// Secure input component with show/hide toggle
+interface SecureInputProps {
   id: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
   disabled?: boolean;
-  label: string;
-  description?: string;
-  icon?: React.ReactNode;
 }
 
-function ToggleSwitch({ 
-  id, 
-  checked, 
-  onChange, 
-  disabled = false, 
-  label, 
-  description,
-  icon 
-}: ToggleSwitchProps) {
+function SecureInput({ id, value, placeholder, onChange, disabled }: SecureInputProps) {
+  const [show, setShow] = useState(false);
+
   return (
-    <div className="flex items-start justify-between py-4">
-      <div className="flex items-start gap-3">
-        {icon && (
-          <div className="mt-0.5 flex-shrink-0 w-10 h-10 rounded-lg bg-surface flex items-center justify-center">
-            {icon}
-          </div>
-        )}
-        <div>
-          <label 
-            htmlFor={id}
-            className="text-base font-medium text-text cursor-pointer"
-          >
-            {label}
-          </label>
-          {description && (
-            <p className="text-sm text-text-muted mt-1">{description}</p>
-          )}
-        </div>
-      </div>
+    <div className="relative">
+      <input
+        id={id}
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-text placeholder:text-text-subtle focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-colors pr-12"
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          borderColor: 'var(--color-border)',
+          color: 'var(--color-text)',
+        }}
+      />
       <button
         type="button"
-        role="switch"
-        id={id}
-        aria-checked={checked}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={`
-          relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full 
-          transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 
-          focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface
-          ${checked ? 'bg-primary-400' : 'bg-surface-alt'}
-          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-        `}
+        onClick={() => setShow(!show)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-text-muted hover:text-text hover:bg-surface-alt transition-colors cursor-pointer"
+        style={{ color: 'var(--color-text-muted)' }}
+        aria-label={show ? 'Hide API key' : 'Show API key'}
+        aria-pressed={show}
       >
-        <span
-          className={`
-            pointer-events-none inline-block h-5 w-5 transform rounded-full 
-            bg-white shadow ring-0 transition duration-200 ease-in-out
-            ${checked ? 'translate-x-6' : 'translate-x-0.5'}
-            mt-0.5
-          `}
-        />
+        {show ? (
+          <EyeOff className="w-4 h-4" />
+        ) : (
+          <Eye className="w-4 h-4" />
+        )}
       </button>
     </div>
   );
 }
 
-// Profile Tab Component
-function ProfileTab() {
-  const { user, checkAuth } = useAuthStore();
-  const [name, setName] = useState(user?.name || '');
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  useEffect(() => {
-    if (user?.name) setName(user.name);
-  }, [user?.name]);
-
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setMessage(null);
-    try {
-      const response = await api.patch('/auth/profile', { name } as UpdateProfileRequest);
-      setMessage({ type: 'success', text: response.data.message || 'Profil güncellendi' });
-      await checkAuth();
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Profil güncellenirken bir hata oluştu' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPasswordMessage(null);
-    if (newPassword !== confirmPassword) {
-      setPasswordMessage({ type: 'error', text: 'Yeni şifreler eşleşmiyor' });
-      return;
-    }
-    if (newPassword.length < 8) {
-      setPasswordMessage({ type: 'error', text: 'Yeni şifre en az 8 karakter olmalıdır' });
-      return;
-    }
-    setIsPasswordLoading(true);
-    try {
-      const response = await api.post('/auth/change-password', { currentPassword, newPassword } as ChangePasswordRequest);
-      setPasswordMessage({ type: 'success', text: response.data.message || 'Şifre değiştirildi' });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (err: any) {
-      setPasswordMessage({ type: 'error', text: err.response?.data?.error || 'Şifre değiştirilirken bir hata oluştu' });
-    } finally {
-      setIsPasswordLoading(false);
-    }
-  };
-
-  return (
-    <div className="space-y-8">
-      <section className="card">
-        <h3 className="text-lg font-semibold text-text mb-1">Profil Bilgileri</h3>
-        <p className="text-sm text-text-muted mb-6">Kişisel bilgilerinizi güncelleyin</p>
-        <form onSubmit={handleProfileUpdate} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="profile-name" className="block text-sm font-medium text-text mb-2">İsim</label>
-              <input id="profile-name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder="Adınız" maxLength={100} autoComplete="name" />
-            </div>
-            <div>
-              <label htmlFor="profile-email" className="block text-sm font-medium text-text mb-2">E-posta</label>
-              <input id="profile-email" type="email" value={user?.email || ''} disabled className="input bg-surface-alt/50 cursor-not-allowed opacity-60" autoComplete="email" />
-              <p className="text-xs text-text-muted mt-1">E-posta adresi değiştirilemez</p>
-            </div>
-          </div>
-          {message && <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-success/10 text-success border border-success/20' : 'bg-error/10 text-error border border-error/20'}`} role="alert">{message.text}</div>}
-          <div className="flex justify-end">
-            <button type="submit" disabled={isLoading || name === user?.name} className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed">{isLoading ? 'Kaydediliyor...' : 'Profili Kaydet'}</button>
-          </div>
-        </form>
-      </section>
-      <section className="card">
-        <h3 className="text-lg font-semibold text-text mb-1">Şifre Değiştir</h3>
-        <p className="text-sm text-text-muted mb-6">Hesap güvenliğiniz için şifrenizi düzenli olarak değiştirin</p>
-        <form onSubmit={handlePasswordChange} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="current-password" className="block text-sm font-medium text-text mb-2">Mevcut Şifre</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                <input id="current-password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="input pl-10" placeholder="••••••••" autoComplete="current-password" />
-              </div>
-            </div>
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="new-password" className="block text-sm font-medium text-text mb-2">Yeni Şifre</label>
-                <input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="input" placeholder="••••••••" autoComplete="new-password" />
-                <p className="text-xs text-text-muted mt-1">En az 8 karakter, bir büyük harf, bir küçük harf ve bir rakam</p>
-              </div>
-              <div>
-                <label htmlFor="confirm-password" className="block text-sm font-medium text-text mb-2">Yeni Şifre (Tekrar)</label>
-                <input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="input" placeholder="••••••••" autoComplete="new-password" />
-              </div>
-            </div>
-          </div>
-          {passwordMessage && <div className={`p-3 rounded-lg text-sm ${passwordMessage.type === 'success' ? 'bg-success/10 text-success border border-success/20' : 'bg-error/10 text-error border border-error/20'}`} role="alert">{passwordMessage.text}</div>}
-          <div className="flex justify-end">
-            <button type="submit" disabled={isPasswordLoading || !currentPassword || !newPassword || !confirmPassword} className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed">{isPasswordLoading ? 'Değiştiriliyor...' : 'Şifreyi Değiştir'}</button>
-          </div>
-        </form>
-      </section>
-    </div>
-  );
-}
-
-// General Tab Component
-function GeneralTab() {
-  return (
-    <div className="card">
-      <h3 className="text-lg font-semibold text-text mb-1">Genel Ayarlar</h3>
-      <p className="text-sm text-text-muted">Genel ayarlar yakında eklenecek</p>
-    </div>
-  );
-}
-
-// API Key Input Component with show/hide toggle
-interface ApiKeyInputProps {
+// Select input component
+interface SelectInputProps {
   id: string;
-  label: string;
   value: string;
   onChange: (value: string) => void;
-  placeholder?: string;
+  options: { value: string; label: string }[];
+  disabled?: boolean;
 }
 
-function ApiKeyInput({ id, label, value, onChange, placeholder }: ApiKeyInputProps) {
-  const [showValue, setShowValue] = useState(false);
+function SelectInput({ id, value, onChange, options, disabled }: SelectInputProps) {
+  return (
+    <select
+      id={id}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-colors cursor-pointer"
+      style={{
+        backgroundColor: 'var(--color-surface)',
+        borderColor: 'var(--color-border)',
+        color: 'var(--color-text)',
+      }}
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// Number input with controls
+interface NumberInputProps {
+  id: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  disabled?: boolean;
+}
+
+function NumberInput({ id, value, onChange, min = 0, max, step = 1, disabled }: NumberInputProps) {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = parseInt(e.target.value, 10);
+    if (!isNaN(newValue)) {
+      onChange(Math.max(min, Math.min(max || newValue, newValue)));
+    }
+  };
 
   return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium text-text mb-2">{label}</label>
-      <div className="relative">
-        <input
-          id={id}
-          type={showValue ? 'text' : 'password'}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="input pr-10"
-          placeholder={placeholder || '••••••••'}
-          autoComplete="off"
-        />
-        <button
-          type="button"
-          onClick={() => setShowValue(!showValue)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 rounded cursor-pointer"
-          aria-label={showValue ? 'Hide' : 'Show'}
-        >
-          {showValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </button>
-      </div>
+    <div className="flex items-center gap-2">
+      <input
+        id={id}
+        type="number"
+        value={value}
+        onChange={handleChange}
+        min={min}
+        max={max}
+        step={step}
+        disabled={disabled}
+        className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-colors"
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          borderColor: 'var(--color-border)',
+          color: 'var(--color-text)',
+        }}
+      />
     </div>
   );
 }
 
 // API Keys Tab Component
-interface ApiKeySettings {
-  openai_api_key: string;
-  unsplash_api_key: string;
-  google_trends_api_key: string;
-  search_console_client_id: string;
-  search_console_client_secret: string;
-  search_console_refresh_token: string;
+interface ApiKeysTabProps {
+  apiKeys: ApiKeys;
+  onSave: (key: keyof ApiKeys, value: string) => Promise<void>;
+  saving: Record<string, boolean>;
+  saved: Record<string, boolean>;
 }
 
-function ApiKeysTab() {
-  const [settings, setSettings] = useState<ApiKeySettings>({
-    openai_api_key: '',
-    unsplash_api_key: '',
-    google_trends_api_key: '',
-    search_console_client_id: '',
-    search_console_client_secret: '',
-    search_console_refresh_token: '',
-  });
-  const [originalSettings, setOriginalSettings] = useState<ApiKeySettings>({
-    openai_api_key: '',
-    unsplash_api_key: '',
-    google_trends_api_key: '',
-    search_console_client_id: '',
-    search_console_client_secret: '',
-    search_console_refresh_token: '',
+function ApiKeysTab({ apiKeys, onSave, saving, saved }: ApiKeysTabProps) {
+  const [values, setValues] = useState<ApiKeys>(apiKeys);
+
+  useEffect(() => {
+    setValues(apiKeys);
+  }, [apiKeys]);
+
+  const handleChange = (key: keyof ApiKeys, value: string) => {
+    setValues((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSave = async (key: keyof ApiKeys) => {
+    const value = values[key] || '';
+    await onSave(key, value);
+  };
+
+  const hasChanges = (key: keyof ApiKeys) => {
+    return values[key] !== apiKeys[key];
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div
+          className="w-10 h-10 rounded-lg flex items-center justify-center"
+          style={{ backgroundColor: 'var(--color-primary-400)', opacity: 0.1 }}
+        >
+          <Key className="w-5 h-5" style={{ color: 'var(--color-primary-400)' }} />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
+            API Anahtarları
+          </h2>
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+            Harici servisler için API anahtarlarını yapılandırın
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {API_KEY_FIELDS.map((field) => (
+          <div key={field.key} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor={field.key}
+                className="text-sm font-medium"
+                style={{ color: 'var(--color-text)' }}
+              >
+                {field.label}
+              </label>
+              {saved[field.key] && (
+                <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-success)' }}>
+                  <Check className="w-3 h-3" />
+                  Kaydedildi
+                </span>
+              )}
+            </div>
+            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              {field.description}
+            </p>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <SecureInput
+                  id={field.key}
+                  value={values[field.key] || ''}
+                  placeholder={field.placeholder}
+                  onChange={(value) => handleChange(field.key, value)}
+                  disabled={saving[field.key]}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSave(field.key)}
+                disabled={saving[field.key] || !hasChanges(field.key)}
+                className="px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                style={{
+                  backgroundColor: hasChanges(field.key)
+                    ? 'var(--color-primary-400)'
+                    : 'var(--color-surface-alt)',
+                  color: hasChanges(field.key)
+                    ? 'var(--color-surface)'
+                    : 'var(--color-text-muted)',
+                }}
+              >
+                {saving[field.key] ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Kaydet
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div
+        className="mt-8 p-4 rounded-lg border"
+        style={{
+          backgroundColor: 'var(--color-surface-alt)',
+          borderColor: 'var(--color-border)',
+        }}
+      >
+        <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
+          Güvenlik Notu
+        </h3>
+        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+          API anahtarları sunucuda güvenli bir şekilde saklanır. Anahtarlarınızı asla başkalarıyla
+          paylaşmayın ve düzenli olarak rotasyon yapın.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// General Tab Component
+interface GeneralTabProps {
+  settings: GeneralSettings;
+  onSave: (key: keyof GeneralSettings, value: string | number) => Promise<void>;
+  saving: Record<string, boolean>;
+  saved: Record<string, boolean>;
+}
+
+function GeneralTab({ settings, onSave, saving, saved }: GeneralTabProps) {
+  const [values, setValues] = useState<GeneralSettings>(settings);
+
+  useEffect(() => {
+    setValues(settings);
+  }, [settings]);
+
+  const handleChange = <K extends keyof GeneralSettings>(key: K, value: GeneralSettings[K]) => {
+    setValues((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSave = async (key: keyof GeneralSettings) => {
+    await onSave(key, values[key] as string | number);
+  };
+
+  const hasChanges = (key: keyof GeneralSettings) => {
+    return values[key] !== settings[key];
+  };
+
+  const isSaving = (key: keyof GeneralSettings) => saving[`general_${key}`];
+  const isSaved = (key: keyof GeneralSettings) => saved[`general_${key}`];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div
+          className="w-10 h-10 rounded-lg flex items-center justify-center"
+          style={{ backgroundColor: 'var(--color-primary-400)', opacity: 0.1 }}
+        >
+          <SettingsIcon className="w-5 h-5" style={{ color: 'var(--color-primary-400)' }} />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
+            Genel Ayarlar
+          </h2>
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+            Platform genel ayarlarını yapılandırın
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-8">
+        {/* Language Setting */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4" style={{ color: 'var(--color-text-muted)' }} />
+              <label
+                htmlFor="language"
+                className="text-sm font-medium"
+                style={{ color: 'var(--color-text)' }}
+              >
+                Varsayılan Dil
+              </label>
+            </div>
+            {isSaved('language') && (
+              <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-success)' }}>
+                <Check className="w-3 h-3" />
+                Kaydedildi
+              </span>
+            )}
+          </div>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            Oluşturulan içeriklerin varsayılan dili
+          </p>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <SelectInput
+                id="language"
+                value={values.language}
+                onChange={(value) => handleChange('language', value)}
+                options={LANGUAGES.map((lang) => ({ value: lang.code, label: lang.name }))}
+                disabled={isSaving('language')}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSave('language')}
+              disabled={isSaving('language') || !hasChanges('language')}
+              className="px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              style={{
+                backgroundColor: hasChanges('language')
+                  ? 'var(--color-primary-400)'
+                  : 'var(--color-surface-alt)',
+                color: hasChanges('language')
+                  ? 'var(--color-surface)'
+                  : 'var(--color-text-muted)',
+              }}
+            >
+              {isSaving('language') ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Kaydet
+            </button>
+          </div>
+        </div>
+
+        {/* AI Model Setting */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Cpu className="w-4 h-4" style={{ color: 'var(--color-text-muted)' }} />
+              <label
+                htmlFor="ai_model"
+                className="text-sm font-medium"
+                style={{ color: 'var(--color-text)' }}
+              >
+                AI Model
+              </label>
+            </div>
+            {isSaved('ai_model') && (
+              <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-success)' }}>
+                <Check className="w-3 h-3" />
+                Kaydedildi
+              </span>
+            )}
+          </div>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            İçerik üretimi için kullanılacak AI modeli
+          </p>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <SelectInput
+                id="ai_model"
+                value={values.ai_model}
+                onChange={(value) => handleChange('ai_model', value)}
+                options={AI_MODELS.map((model) => ({ value: model.id, label: `${model.name} (${model.provider})` }))}
+                disabled={isSaving('ai_model')}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSave('ai_model')}
+              disabled={isSaving('ai_model') || !hasChanges('ai_model')}
+              className="px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              style={{
+                backgroundColor: hasChanges('ai_model')
+                  ? 'var(--color-primary-400)'
+                  : 'var(--color-surface-alt)',
+                color: hasChanges('ai_model')
+                  ? 'var(--color-surface)'
+                  : 'var(--color-text-muted)',
+              }}
+            >
+              {isSaving('ai_model') ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Kaydet
+            </button>
+          </div>
+        </div>
+
+        {/* Publish Jitter Setting */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4" style={{ color: 'var(--color-text-muted)' }} />
+              <label
+                htmlFor="publish_jitter_minutes"
+                className="text-sm font-medium"
+                style={{ color: 'var(--color-text)' }}
+              >
+                Yayın Jitter Süresi (dakika)
+              </label>
+            </div>
+            {isSaved('publish_jitter_minutes') && (
+              <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-success)' }}>
+                <Check className="w-3 h-3" />
+                Kaydedildi
+              </span>
+            )}
+          </div>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            Planlı yayın zamanına eklenecek rastgele gecikme aralığı (dakika cinsinden)
+          </p>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <NumberInput
+                id="publish_jitter_minutes"
+                value={values.publish_jitter_minutes}
+                onChange={(value) => handleChange('publish_jitter_minutes', value)}
+                min={0}
+                max={60}
+                disabled={isSaving('publish_jitter_minutes')}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSave('publish_jitter_minutes')}
+              disabled={isSaving('publish_jitter_minutes') || !hasChanges('publish_jitter_minutes')}
+              className="px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              style={{
+                backgroundColor: hasChanges('publish_jitter_minutes')
+                  ? 'var(--color-primary-400)'
+                  : 'var(--color-surface-alt)',
+                color: hasChanges('publish_jitter_minutes')
+                  ? 'var(--color-surface)'
+                  : 'var(--color-text-muted)',
+              }}
+            >
+              {isSaving('publish_jitter_minutes') ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Kaydet
+            </button>
+          </div>
+        </div>
+
+        {/* SEO Min Words Setting */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4" style={{ color: 'var(--color-text-muted)' }} />
+              <label
+                htmlFor="seo_min_words"
+                className="text-sm font-medium"
+                style={{ color: 'var(--color-text)' }}
+              >
+                SEO Minimum Kelime Sayısı
+              </label>
+            </div>
+            {isSaved('seo_min_words') && (
+              <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-success)' }}>
+                <Check className="w-3 h-3" />
+                Kaydedildi
+              </span>
+            )}
+          </div>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            İçeriklerin SEO için sahip olması gereken minimum kelime sayısı
+          </p>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <NumberInput
+                id="seo_min_words"
+                value={values.seo_min_words}
+                onChange={(value) => handleChange('seo_min_words', value)}
+                min={100}
+                max={5000}
+                step={50}
+                disabled={isSaving('seo_min_words')}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSave('seo_min_words')}
+              disabled={isSaving('seo_min_words') || !hasChanges('seo_min_words')}
+              className="px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              style={{
+                backgroundColor: hasChanges('seo_min_words')
+                  ? 'var(--color-primary-400)'
+                  : 'var(--color-surface-alt)',
+                color: hasChanges('seo_min_words')
+                  ? 'var(--color-surface)'
+                  : 'var(--color-text-muted)',
+              }}
+            >
+              {isSaving('seo_min_words') ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Kaydet
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main Settings Component
+export default function Settings() {
+  const [activeTab, setActiveTab] = useState<Tab>('general');
+  const [apiKeys, setApiKeys] = useState<ApiKeys>({});
+  const [generalSettings, setGeneralSettings] = useState<GeneralSettings>({
+    language: 'tr',
+    ai_model: 'gpt-4o',
+    publish_jitter_minutes: 15,
+    seo_min_words: 300,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
-  const [savedIndicators, setSavedIndicators] = useState<Record<string, boolean>>({});
+  const [saved, setSaved] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch settings on mount
   useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/settings');
+        const settings = response.data;
+
+        // Extract API keys from settings
+        const keys: ApiKeys = {
+          openai_api_key: settings.openai_api_key || '',
+          unsplash_api_key: settings.unsplash_api_key || '',
+          google_trends_api_key: settings.google_trends_api_key || '',
+          search_console_client_id: settings.search_console_client_id || '',
+          search_console_client_secret: settings.search_console_client_secret || '',
+          search_console_refresh_token: settings.search_console_refresh_token || '',
+        };
+        setApiKeys(keys);
+
+        // Extract general settings from settings
+        setGeneralSettings({
+          language: settings.language || 'tr',
+          ai_model: settings.ai_model || 'gpt-4o',
+          publish_jitter_minutes: settings.publish_jitter_minutes || 15,
+          seo_min_words: settings.seo_min_words || 300,
+        });
+      } catch (err) {
+        setError('Ayarlar yüklenirken bir hata oluştu');
+        console.error('Failed to load settings:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchSettings();
   }, []);
 
-  const fetchSettings = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.get('/settings');
-      const data = response.data;
-      const newSettings: ApiKeySettings = {
-        openai_api_key: data.openai_api_key || '',
-        unsplash_api_key: data.unsplash_api_key || '',
-        google_trends_api_key: data.google_trends_api_key || '',
-        search_console_client_id: data.search_console_client_id || '',
-        search_console_client_secret: data.search_console_client_secret || '',
-        search_console_refresh_token: data.search_console_refresh_token || '',
-      };
-      setSettings(newSettings);
-      setOriginalSettings(newSettings);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Ayarlar yüklenirken bir hata oluştu');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateSetting = (key: keyof ApiKeySettings, value: string) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const saveKey = async (key: keyof ApiKeySettings) => {
+  // Save individual API key
+  const handleSaveApiKey = async (key: keyof ApiKeys, value: string) => {
     try {
       setSaving((prev) => ({ ...prev, [key]: true }));
       setError(null);
-      await api.put(`/settings/${key}`, { value: settings[key], type: 'string' });
-      setOriginalSettings((prev) => ({ ...prev, [key]: settings[key] }));
-      setSavedIndicators((prev) => ({ ...prev, [key]: true }));
+
+      await api.put(`/settings/${key}`, {
+        value,
+        type: 'string',
+      });
+
+      // Update local state
+      setApiKeys((prev) => ({ ...prev, [key]: value }));
+
+      // Show success indicator
+      setSaved((prev) => ({ ...prev, [key]: true }));
       setTimeout(() => {
-        setSavedIndicators((prev) => ({ ...prev, [key]: false }));
-      }, 3000);
-    } catch (err: any) {
-      setError(err.response?.data?.error || `${key} kaydedilirken bir hata oluştu`);
+        setSaved((prev) => ({ ...prev, [key]: false }));
+      }, 2000);
+    } catch (err) {
+      setError(`${key} kaydedilirken bir hata oluştu`);
+      console.error('Failed to save setting:', err);
     } finally {
       setSaving((prev) => ({ ...prev, [key]: false }));
     }
   };
 
-  const hasChanges = (key: keyof ApiKeySettings) => settings[key] !== originalSettings[key];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 text-primary-400 animate-spin" role="status" aria-label="Yükleniyor" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-text">API Anahtarları</h2>
-        <p className="text-text-muted mt-1">Harici servisler için API anahtarlarınızı yönetin</p>
-      </div>
-
-      {error && (
-        <div role="alert" className="bg-error/10 border border-error/20 rounded-lg p-4 flex items-center gap-3">
-          <XCircle className="w-5 h-5 text-error flex-shrink-0" />
-          <p className="text-error text-sm">{error}</p>
-        </div>
-      )}
-
-      {/* Security Note */}
-      <div className="bg-info/10 border border-info/20 rounded-lg p-4 flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
-        <div>
-          <h4 className="text-sm font-medium text-info">Güvenlik Notu</h4>
-          <p className="text-sm text-info/80 mt-1">
-            API anahtarları sunucuda güvenli bir şekilde saklanır. Anahtarlarınızı kimseyle paylaşmayın.
-          </p>
-        </div>
-      </div>
-
-      {/* OpenAI API Key */}
-      <section className="card">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-medium text-text">OpenAI API Key</h3>
-            <p className="text-sm text-text-muted">Yapay zeka içerik üretimi için kullanılır</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {savedIndicators.openai_api_key && (
-              <span className="text-sm text-success flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" />
-                Kaydedildi
-              </span>
-            )}
-            <button
-              onClick={() => saveKey('openai_api_key')}
-              disabled={saving.openai_api_key || !hasChanges('openai_api_key')}
-              className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-            >
-              {saving.openai_api_key ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /><span>Kaydediliyor...</span></>
-              ) : (
-                <><Save className="w-4 h-4" /><span>Kaydet</span></>
-              )}
-            </button>
-          </div>
-        </div>
-        <ApiKeyInput
-          id="openai_api_key"
-          label="OpenAI API Key"
-          value={settings.openai_api_key}
-          onChange={(value) => updateSetting('openai_api_key', value)}
-          placeholder="sk-..."
-        />
-      </section>
-
-      {/* Unsplash API Key */}
-      <section className="card">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-medium text-text">Unsplash API Key</h3>
-            <p className="text-sm text-text-muted">Ücretsiz stok fotoğraflar için kullanılır</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {savedIndicators.unsplash_api_key && (
-              <span className="text-sm text-success flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" />
-                Kaydedildi
-              </span>
-            )}
-            <button
-              onClick={() => saveKey('unsplash_api_key')}
-              disabled={saving.unsplash_api_key || !hasChanges('unsplash_api_key')}
-              className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-            >
-              {saving.unsplash_api_key ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /><span>Kaydediliyor...</span></>
-              ) : (
-                <><Save className="w-4 h-4" /><span>Kaydet</span></>
-              )}
-            </button>
-          </div>
-        </div>
-        <ApiKeyInput
-          id="unsplash_api_key"
-          label="Unsplash API Key"
-          value={settings.unsplash_api_key}
-          onChange={(value) => updateSetting('unsplash_api_key', value)}
-          placeholder="..."
-        />
-      </section>
-
-      {/* Google Trends API Key */}
-      <section className="card">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-medium text-text">Google Trends API Key</h3>
-            <p className="text-sm text-text-muted">Trend analizi için kullanılır</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {savedIndicators.google_trends_api_key && (
-              <span className="text-sm text-success flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" />
-                Kaydedildi
-              </span>
-            )}
-            <button
-              onClick={() => saveKey('google_trends_api_key')}
-              disabled={saving.google_trends_api_key || !hasChanges('google_trends_api_key')}
-              className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-            >
-              {saving.google_trends_api_key ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /><span>Kaydediliyor...</span></>
-              ) : (
-                <><Save className="w-4 h-4" /><span>Kaydet</span></>
-              )}
-            </button>
-          </div>
-        </div>
-        <ApiKeyInput
-          id="google_trends_api_key"
-          label="Google Trends API Key"
-          value={settings.google_trends_api_key}
-          onChange={(value) => updateSetting('google_trends_api_key', value)}
-          placeholder="..."
-        />
-      </section>
-
-      {/* Search Console Credentials */}
-      <section className="card">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-medium text-text">Search Console Credentials</h3>
-            <p className="text-sm text-text-muted">Google Search Console entegrasyonu için kullanılır</p>
-          </div>
-        </div>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <ApiKeyInput
-              id="search_console_client_id"
-              label="Search Console Client ID"
-              value={settings.search_console_client_id}
-              onChange={(value) => updateSetting('search_console_client_id', value)}
-              placeholder="..."
-            />
-            <div className="flex items-center gap-2 ml-4 mt-6">
-              {savedIndicators.search_console_client_id && (
-                <span className="text-sm text-success flex items-center gap-1">
-                  <CheckCircle className="w-4 h-4" />
-                  Kaydedildi
-                </span>
-              )}
-              <button
-                onClick={() => saveKey('search_console_client_id')}
-                disabled={saving.search_console_client_id || !hasChanges('search_console_client_id')}
-                className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                {saving.search_console_client_id ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /></>
-                ) : (
-                  <><Save className="w-4 h-4" /><span>Kaydet</span></>
-                )}
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <ApiKeyInput
-              id="search_console_client_secret"
-              label="Search Console Client Secret"
-              value={settings.search_console_client_secret}
-              onChange={(value) => updateSetting('search_console_client_secret', value)}
-              placeholder="..."
-            />
-            <div className="flex items-center gap-2 ml-4 mt-6">
-              {savedIndicators.search_console_client_secret && (
-                <span className="text-sm text-success flex items-center gap-1">
-                  <CheckCircle className="w-4 h-4" />
-                  Kaydedildi
-                </span>
-              )}
-              <button
-                onClick={() => saveKey('search_console_client_secret')}
-                disabled={saving.search_console_client_secret || !hasChanges('search_console_client_secret')}
-                className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                {saving.search_console_client_secret ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /></>
-                ) : (
-                  <><Save className="w-4 h-4" /><span>Kaydet</span></>
-                )}
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <ApiKeyInput
-              id="search_console_refresh_token"
-              label="Search Console Refresh Token"
-              value={settings.search_console_refresh_token}
-              onChange={(value) => updateSetting('search_console_refresh_token', value)}
-              placeholder="..."
-            />
-            <div className="flex items-center gap-2 ml-4 mt-6">
-              {savedIndicators.search_console_refresh_token && (
-                <span className="text-sm text-success flex items-center gap-1">
-                  <CheckCircle className="w-4 h-4" />
-                  Kaydedildi
-                </span>
-              )}
-              <button
-                onClick={() => saveKey('search_console_refresh_token')}
-                disabled={saving.search_console_refresh_token || !hasChanges('search_console_refresh_token')}
-                className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                {saving.search_console_refresh_token ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /></>
-                ) : (
-                  <><Save className="w-4 h-4" /><span>Kaydet</span></>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-// Notifications Tab Component
-function NotificationsTab() {
-  const [settings, setSettings] = useState<NotificationSettings>({
-    emailEnabled: false, pushEnabled: false, notifyOnPublishSuccess: false, notifyOnPublishFailed: false, notifyOnTrendingTopic: false,
-  });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
+  // Save general setting
+  const handleSaveGeneralSetting = async (key: keyof GeneralSettings, value: string | number) => {
+    const saveKey = `general_${key}`;
     try {
-      setLoading(true);
+      setSaving((prev) => ({ ...prev, [saveKey]: true }));
       setError(null);
-      const response = await api.get('/settings');
-      const data = response.data;
-      setSettings({
-        emailEnabled: data.emailEnabled ?? false, pushEnabled: data.pushEnabled ?? false,
-        notifyOnPublishSuccess: data.notifyOnPublishSuccess ?? false, notifyOnPublishFailed: data.notifyOnPublishFailed ?? false,
-        notifyOnTrendingTopic: data.notifyOnTrendingTopic ?? false,
+
+      // Determine type based on key
+      const settingType = key === 'publish_jitter_minutes' || key === 'seo_min_words' ? 'number' : 'string';
+
+      await api.put(`/settings/${key}`, {
+        value,
+        type: settingType,
       });
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Bildirim ayarları yüklenirken bir hata oluştu');
+
+      // Update local state
+      setGeneralSettings((prev) => ({ ...prev, [key]: value }));
+
+      // Show success indicator
+      setSaved((prev) => ({ ...prev, [saveKey]: true }));
+      setTimeout(() => {
+        setSaved((prev) => ({ ...prev, [saveKey]: false }));
+      }, 2000);
+    } catch (err) {
+      setError(`${key} kaydedilirken bir hata oluştu`);
+      console.error('Failed to save setting:', err);
     } finally {
-      setLoading(false);
+      setSaving((prev) => ({ ...prev, [saveKey]: false }));
     }
   };
 
-  const saveSettings = async () => {
-    try {
-      setSaving(true);
-      setSaveStatus('idle');
-      setError(null);
-      await Promise.all([
-        api.put('/settings/emailEnabled', { value: settings.emailEnabled, type: 'boolean' }),
-        api.put('/settings/pushEnabled', { value: settings.pushEnabled, type: 'boolean' }),
-        api.put('/settings/notifyOnPublishSuccess', { value: settings.notifyOnPublishSuccess, type: 'boolean' }),
-        api.put('/settings/notifyOnPublishFailed', { value: settings.notifyOnPublishFailed, type: 'boolean' }),
-        api.put('/settings/notifyOnTrendingTopic', { value: settings.notifyOnTrendingTopic, type: 'boolean' }),
-      ]);
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Ayarlar kaydedilirken bir hata oluştu');
-      setSaveStatus('error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const updateSetting = <K extends keyof NotificationSettings>(key: K, value: NotificationSettings[K]) => {
-    setSettings((prev: NotificationSettings) => ({ ...prev, [key]: value }));
-  };
-
-  if (loading) {
-    return (<div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 text-primary-400 animate-spin" role="status" aria-label="Yükleniyor" /></div>);
-  }
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'general', label: 'Genel' },
+    { id: 'api-keys', label: 'API Anahtarları' },
+  ];
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-text">Bildirim Ayarları</h2>
-        <p className="text-text-muted mt-1">E-posta ve push bildirim tercihlerinizi yönetin</p>
+        <h1
+          className="text-2xl font-bold"
+          style={{
+            color: 'var(--color-text)',
+            fontFamily: 'var(--font-heading)',
+          }}
+        >
+          Ayarlar
+        </h1>
+        <p className="mt-1" style={{ color: 'var(--color-text-muted)' }}>
+          Platform ayarlarını yönetin
+        </p>
       </div>
+
+      {/* Error Message */}
       {error && (
-        <div role="alert" className="bg-error/10 border border-error/20 rounded-lg p-4 flex items-center gap-3">
-          <XCircle className="w-5 h-5 text-error flex-shrink-0" />
-          <p className="text-error text-sm">{error}</p>
+        <div
+          className="p-4 rounded-lg"
+          style={{
+            backgroundColor: 'rgba(248, 113, 113, 0.1)',
+            border: '1px solid var(--color-error)',
+            color: 'var(--color-error)',
+          }}
+        >
+          {error}
         </div>
       )}
-      {saveStatus === 'success' && (
-        <div role="alert" className="bg-success/10 border border-success/20 rounded-lg p-4 flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 text-success flex-shrink-0" />
-          <p className="text-success text-sm">Ayarlar başarıyla kaydedildi</p>
-        </div>
-      )}
-      <section className="card">
-        <h3 className="text-lg font-medium text-text mb-4">Bildirim Kanalları</h3>
-        <div className="divide-y divide-border">
-          <ToggleSwitch id="emailEnabled" checked={settings.emailEnabled} onChange={(checked) => updateSetting('emailEnabled', checked)} label="E-posta Bildirimleri" description="Önemli olaylar hakkında e-posta alın" icon={<Mail className="w-5 h-5 text-primary-400" />} />
-          <ToggleSwitch id="pushEnabled" checked={settings.pushEnabled} onChange={(checked) => updateSetting('pushEnabled', checked)} label="Push Bildirimleri" description="Tarayıcı push bildirimlerini etkinleştirin" icon={<Smartphone className="w-5 h-5 text-accent-400" />} />
-        </div>
-      </section>
-      <section className="card">
-        <h3 className="text-lg font-medium text-text mb-4">Bildirim Türleri</h3>
-        <div className="divide-y divide-border">
-          <ToggleSwitch id="notifyOnPublishSuccess" checked={settings.notifyOnPublishSuccess} onChange={(checked) => updateSetting('notifyOnPublishSuccess', checked)} label="Yayın Başarılı" description="Makale başarıyla yayınlandığında bildirim alın" icon={<CheckCircle className="w-5 h-5 text-success" />} />
-          <ToggleSwitch id="notifyOnPublishFailed" checked={settings.notifyOnPublishFailed} onChange={(checked) => updateSetting('notifyOnPublishFailed', checked)} label="Yayın Başarısız" description="Yayınlama başarısız olduğunda bildirim alın" icon={<XCircle className="w-5 h-5 text-error" />} />
-          <ToggleSwitch id="notifyOnTrendingTopic" checked={settings.notifyOnTrendingTopic} onChange={(checked) => updateSetting('notifyOnTrendingTopic', checked)} label="Trend Konu" description="Yeni bir trend konu bulunduğunda bildirim alın" icon={<TrendingUp className="w-5 h-5 text-warning" />} />
-        </div>
-      </section>
-      <div className="flex justify-end">
-        <button onClick={saveSettings} disabled={saving} className="btn btn-primary inline-flex items-center gap-2 px-6 py-2.5">
-          {saving ? (<><Loader2 className="w-4 h-4 animate-spin" /><span>Kaydediliyor...</span></>) : (<><Save className="w-4 h-4" /><span>Kaydet</span></>)}
-        </button>
-      </div>
-    </div>
-  );
-}
 
-// Security Tab Component
-function SecurityTab() {
-  return (
-    <div className="card">
-      <h3 className="text-lg font-semibold text-text mb-1">Güvenlik Ayarları</h3>
-      <p className="text-sm text-text-muted">Güvenlik ayarları yakında eklenecek</p>
-    </div>
-  );
-}
-
-// Main Settings Page
-export default function Settings() {
-  const [activeTab, setActiveTab] = useState<TabId>('api-keys');
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'profile': return <ProfileTab />;
-      case 'general': return <GeneralTab />;
-      case 'api-keys': return <ApiKeysTab />;
-      case 'notifications': return <NotificationsTab />;
-      case 'security': return <SecurityTab />;
-      default: return <ApiKeysTab />;
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-text">Ayarlar</h1>
-        <p className="text-text-muted mt-1">Platform ayarlarını yönetin</p>
-      </div>
-      <div className="flex flex-col lg:flex-row gap-6">
-        <nav className="lg:w-64 flex-shrink-0" aria-label="Settings navigation">
-          <ul className="space-y-1">
-            {tabs.map((tab) => (
-              <li key={tab.id}>
-                <button 
-                  onClick={() => setActiveTab(tab.id)} 
-                  role="tab"
-                  aria-selected={activeTab === tab.id}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${activeTab === tab.id ? 'bg-primary-400/10 text-primary-400 border border-primary-400/20' : 'text-text-muted hover:text-text hover:bg-surface-alt'}`} 
-                  aria-current={activeTab === tab.id ? 'page' : undefined}
-                >
-                  {tab.icon}
-                  {tab.label}
-                </button>
-              </li>
-            ))}
-          </ul>
+      {/* Tabs */}
+      <div className="border-b" style={{ borderColor: 'var(--color-border)' }}>
+        <nav className="flex gap-6" aria-label="Settings tabs" role="tablist">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              className="py-3 px-1 text-sm font-medium border-b-2 transition-colors cursor-pointer"
+              style={{
+                color:
+                  activeTab === tab.id ? 'var(--color-primary-400)' : 'var(--color-text-muted)',
+                borderColor: activeTab === tab.id ? 'var(--color-primary-400)' : 'transparent',
+              }}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
+            >
+              {tab.label}
+            </button>
+          ))}
         </nav>
-        <main className="flex-1 min-w-0">{renderTabContent()}</main>
+      </div>
+
+      {/* Tab Content */}
+      <div
+        className="rounded-xl border p-6"
+        style={{
+          backgroundColor: 'var(--color-surface-alt)',
+          borderColor: 'var(--color-border)',
+        }}
+      >
+        {loading ? (
+          <div className="flex items-center justify-center py-12" role="status" aria-label="Loading settings">
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--color-primary-400)' }} />
+          </div>
+        ) : (
+          <>
+            {activeTab === 'general' && (
+              <GeneralTab
+                settings={generalSettings}
+                onSave={handleSaveGeneralSetting}
+                saving={saving}
+                saved={saved}
+              />
+            )}
+            {activeTab === 'api-keys' && (
+              <ApiKeysTab
+                apiKeys={apiKeys}
+                onSave={handleSaveApiKey}
+                saving={saving}
+                saved={saved}
+              />
+            )}
+          </>
+        )}
       </div>
     </div>
   );

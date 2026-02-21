@@ -53,6 +53,7 @@ export interface Site {
   language: string;
   niche: string;
   is_active: boolean;
+  adsense_status?: 'approved' | 'pending' | 'rejected' | 'not_configured';
 }
 
 export interface PublishHistory {
@@ -90,4 +91,116 @@ export interface PublishQueueItem {
   platform: 'wordpress' | 'blogger';
   scheduled_at: string;
   site_name?: string;
+}
+
+export interface ImageSearchResult {
+  id: string;
+  url: string;
+  thumbUrl: string;
+  description: string | null;
+  altDescription: string | null;
+  width: number;
+  height: number;
+  photographer: {
+    name: string;
+    username: string;
+    portfolioUrl: string;
+  };
+  color: string | null;
+}
+
+export interface ImageSearchMeta {
+  total: number;
+  totalPages: number;
+  page: number;
+}
+
+export type SecurityEventType =
+  | 'LOGIN_SUCCESS'
+  | 'LOGIN_FAILURE'
+  | 'LOGOUT'
+  | 'PASSWORD_CHANGE'
+  | 'UNAUTHORIZED_ACCESS'
+  | 'RATE_LIMIT_HIT';
+
+export interface SecurityEventDetails {
+  reason?: string;
+  [key: string]: unknown;
+}
+
+export interface AuditLog {
+  id: number;
+  event_type: SecurityEventType;
+  user_id: number | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  details: SecurityEventDetails | null;
+  created_at: string;
+}
+
+export interface SecurityStats {
+  totalEvents: number;
+  eventsByType: Record<SecurityEventType, number>;
+  uniqueIps: number;
+  uniqueUsers: number;
+}
+
+export interface RateLimitStats {
+  windowMs: number;
+  maxRequests: number;
+  currentRequests: number;
+  remainingRequests: number;
+  resetTime: string;
+}
+
+export interface SecurityHeadersStatus {
+  contentSecurityPolicy: boolean;
+  hsts: boolean;
+  frameguard: boolean;
+  noSniff: boolean;
+  referrerPolicy: boolean;
+  allEnabled: boolean;
+}
+
+export interface LockedAccount {
+  id: number;
+  email: string;
+  failed_login_attempts: number;
+  locked_until: string;
+}
+
+// API Keys Types
+export interface ApiKeys {
+  openai_api_key?: string;
+  unsplash_api_key?: string;
+  google_trends_api_key?: string;
+  search_console_client_id?: string;
+  search_console_client_secret?: string;
+  search_console_refresh_token?: string;
+}
+
+export interface ApiKeyField {
+  key: keyof ApiKeys;
+  label: string;
+  placeholder: string;
+  description?: string;
+}
+
+// General Settings Types
+export interface GeneralSettings {
+  language: string;
+  ai_model: string;
+  publish_jitter_minutes: number;
+  seo_min_words: number;
+}
+
+export interface LanguageOption {
+  code: string;
+  name: string;
+}
+
+export interface AIModelOption {
+  id: string;
+  name: string;
+  provider: string;
 }

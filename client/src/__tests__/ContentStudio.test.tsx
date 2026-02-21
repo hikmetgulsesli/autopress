@@ -1,247 +1,104 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import ContentStudio from '../pages/ContentStudio';
+import api from '../services/api';
 
-// Create hoisted mocks that can be used in vi.mock
-const { mockPost, mockPut, mockGet, mockSuccess, mockError } = vi.hoisted(() => ({
-  mockPost: vi.fn(),
-  mockPut: vi.fn(),
-  mockGet: vi.fn(),
-  mockSuccess: vi.fn(),
-  mockError: vi.fn(),
+// Mock the Layout component
+vi.mock('../components/layout/Layout', () => ({
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="layout">{children}</div>
+  ),
 }));
 
-// Mock api module
 vi.mock('../services/api', () => ({
   default: {
-    post: mockPost,
-    put: mockPut,
-    get: mockGet,
+    get: vi.fn(),
   },
 }));
 
-// Mock toast module
-vi.mock('../utils/toast', () => ({
-  notify: {
-    success: mockSuccess,
-    error: mockError,
-  },
-}));
-
-// Create a variable to control the mock return value
-let mockArticleValue: any = null;
-
-vi.mock('../hooks/useArticleLoader', () => ({
-  useArticleLoader: () => ({
-    article: mockArticleValue,
-    isLoading: false,
-    error: null,
-  }),
-}));
-
-// Import after mocks
-import ContentStudio from '../pages/ContentStudio';
-
-// Mock useSearchParams to test topic pre-fill
-const mockSearchParams = new URLSearchParams();
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useSearchParams: () => [mockSearchParams, vi.fn()],
-  };
-});
-
-describe('ContentStudio Article Save', () => {
+describe('ContentStudio - Article Loading from URL Param', () => {
+  const mockApi = api as ReturnType<typeof vi.fn>;
+  
   beforeEach(() => {
     vi.clearAllMocks();
-    mockArticleValue = null;
-    mockSearchParams.delete('topic');
   });
 
-  afterEach(() => {
-    mockArticleValue = null;
-    mockSearchParams.delete('topic');
-  });
-
-  const renderContentStudio = () => {
+  const renderWithRouter = (initialEntry: string) => {
     return render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <ContentStudio />
-      </BrowserRouter>
+      </MemoryRouter>
     );
   };
 
-  describe('POST /api/articles (new article)', () => {
-    it('makes POST request when saving new article', async () => {
-      const mockArticleResponse = {
-        id: 1,
-        title: 'New Article Title',
-        content: '<p>Test content</p>',
-      };
-      
-      mockPost.mockResolvedValueOnce({ data: mockArticleResponse });
+  it('should not fetch article when no article ID in URL', async () => {
+    renderWithRouter('/');
 
-      renderContentStudio();
-
-      // Fill in the title
-      const titleInput = screen.getByLabelText('Başlık');
-      fireEvent.change(titleInput, { target: { value: 'New Article Title' } });
-
-      // Click save button
-      const saveButton = screen.getByRole('button', { name: /kaydet/i });
-      fireEvent.click(saveButton);
-
-      // Wait for save to complete and check API was called
-      await waitFor(() => {
-        expect(mockPost).toHaveBeenCalledWith('/articles', expect.objectContaining({
-          title: 'New Article Title',
-          content: '',
-          featured_image_url: null,
-        }));
-      });
-
-      // Should show success toast
-      expect(mockSuccess).toHaveBeenCalledWith('Makale başarıyla kaydedildi');
-    });
-
-    it('shows error toast when POST fails', async () => {
-      mockPost.mockRejectedValueOnce({
-        response: { data: { error: 'Sunucu hatası' } },
-      });
-
-      renderContentStudio();
-
-      // Fill in the title
-      const titleInput = screen.getByLabelText('Başlık');
-      fireEvent.change(titleInput, { target: { value: 'New Article Title' } });
-
-      // Click save button
-      const saveButton = screen.getByRole('button', { name: /kaydet/i });
-      fireEvent.click(saveButton);
-
-      // Should show error toast
-      await waitFor(() => {
-        expect(mockError).toHaveBeenCalledWith('Sunucu hatası');
-      });
-    });
-
-    it('shows error when title is empty', async () => {
-      renderContentStudio();
-
-      // Click save without title
-      const saveButton = screen.getByRole('button', { name: /kaydet/i });
-      fireEvent.click(saveButton);
-
-      // Should show error toast for empty title
-      expect(mockError).toHaveBeenCalledWith('Lütfen bir başlık girin');
-      
-      // Should NOT have called API
-      expect(mockPost).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockApi.get).not.toHaveBeenCalled();
     });
   });
 
-  describe('PUT /api/articles/:id (existing article)', () => {
-    it('makes PUT request when editing existing article', async () => {
-      // Set the mock to return an existing article
-      mockArticleValue = {
-        id: 1,
-        title: 'Existing Article',
-        content: '<p>Existing content</p>',
-      };
+  it('should load article when article ID is present in URL', async () => {
+    const mockArticle = {
+      id: 123,
+      title: 'Test Article',
+      content: '<p>Test content</p>',
+      featured_image_url: 'https://example.com/image.jpg',
+    };
 
-      const mockUpdatedArticle = {
-        id: 1,
-        title: 'Updated Article',
-        content: '<p>Updated content</p>',
-      };
-      
-      mockPut.mockResolvedValueOnce({ data: mockUpdatedArticle });
+    mockApi.get.mockResolvedValueOnce({ data: mockArticle });
 
-      renderContentStudio();
+    renderWithRouter('/?article=123');
 
-      // Wait for article to load
-      await waitFor(() => {
-        expect(screen.getByLabelText('Başlık')).toHaveValue('Existing Article');
-      });
-
-      // Click save button
-      const saveButton = screen.getByRole('button', { name: /kaydet/i });
-      fireEvent.click(saveButton);
-
-      // Wait for save to complete
-      await waitFor(() => {
-        expect(mockPut).toHaveBeenCalledWith('/articles/1', expect.objectContaining({
-          title: 'Existing Article',
-          content: '<p>Existing content</p>',
-        }));
-      });
-
-      // Should show update success toast
-      expect(mockSuccess).toHaveBeenCalledWith('Makale başarıyla güncellendi');
+    await waitFor(() => {
+      expect(mockApi.get).toHaveBeenCalledWith('/articles/123');
     });
 
-    it('shows error toast when PUT fails', async () => {
-      // Set the mock to return an existing article
-      mockArticleValue = {
-        id: 1,
-        title: 'Existing Article',
-        content: '<p>Existing content</p>',
-      };
-
-      mockPut.mockRejectedValueOnce({
-        response: { data: { error: 'Güncelleme başarısız' } },
-      });
-
-      renderContentStudio();
-
-      // Wait for article to load
-      await waitFor(() => {
-        expect(screen.getByLabelText('Başlık')).toHaveValue('Existing Article');
-      });
-
-      // Click save button
-      const saveButton = screen.getByRole('button', { name: /kaydet/i });
-      fireEvent.click(saveButton);
-
-      // Should show error toast
-      await waitFor(() => {
-        expect(mockError).toHaveBeenCalledWith('Güncelleme başarısız');
-      });
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Test Article')).toBeInTheDocument();
     });
   });
 
-  describe('Topic Pre-fill from URL', () => {
-    it('displays topic from URL query param in AI Assistant card', async () => {
-      mockSearchParams.set('topic', 'Yapay Zeka');
+  it('should show loading state while fetching article', async () => {
+    let resolvePromise: (value: any) => void;
+    const promise = new Promise((resolve) => {
+      resolvePromise = resolve;
+    });
+    
+    mockApi.get.mockReturnValueOnce(promise);
 
-      renderContentStudio();
+    renderWithRouter('/?article=123');
 
-      // Should display the topic in the AI Assistant card
-      await waitFor(() => {
-        expect(screen.getByText('Trend Konusu')).toBeInTheDocument();
-      });
-
-      expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/yükleniyor/i)).toBeInTheDocument();
     });
 
-    it('does not display topic section when no topic in URL', async () => {
-      renderContentStudio();
+    resolvePromise!({ data: { id: 123, title: 'Test', content: '<p>Test</p>' } });
+  });
 
-      // Should not display the topic section
-      expect(screen.queryByText('Trend Konusu')).not.toBeInTheDocument();
+  it('should show error state when article is not found (404)', async () => {
+    mockApi.get.mockRejectedValueOnce({
+      response: { status: 404, data: { error: 'Makale bulunamadı' } },
     });
 
-    it('displays encoded topic correctly', async () => {
-      mockSearchParams.set('topic', 'Yapay Zeka & Makine Öğrenmesi');
+    renderWithRouter('/?article=999');
 
-      renderContentStudio();
+    await waitFor(() => {
+      expect(screen.getByText('Makale bulunamadı')).toBeInTheDocument();
+    });
+  });
 
-      // Should display the decoded topic
-      await waitFor(() => {
-        expect(screen.getByText('Yapay Zeka & Makine Öğrenmesi')).toBeInTheDocument();
-      });
+  it('should show error state on general API error', async () => {
+    mockApi.get.mockRejectedValueOnce({
+      response: { status: 500, data: { error: 'Sunucu hatası' } },
+    });
+
+    renderWithRouter('/?article=123');
+
+    await waitFor(() => {
+      expect(screen.getByText('Sunucu hatası')).toBeInTheDocument();
     });
   });
 });

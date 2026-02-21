@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Link as LinkIcon, 
-  FileText, 
-  Download, 
-  Loader2, 
-  CheckCircle, 
-  AlertCircle, 
+import {
+  Search,
+  Link as LinkIcon,
+  FileText,
+  Download,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
   XCircle,
   Play,
   RefreshCw,
@@ -15,6 +15,7 @@ import {
   Lightbulb
 } from 'lucide-react';
 import api from '../services/api';
+import { useSiteStore, Site } from '../store/siteStore';
 
 interface BulkJob {
   id: number;
@@ -72,6 +73,7 @@ const inputFocusStyle = {
 };
 
 export default function SEOTools() {
+  const { sites, fetchSites } = useSiteStore();
   const [activeTab, setActiveTab] = useState<'analysis' | 'links' | 'suggestions' | 'jobs'>('analysis');
   const [jobs, setJobs] = useState<BulkJob[]>([]);
   const [brokenLinks, setBrokenLinks] = useState<BrokenLink[]>([]);
@@ -85,6 +87,7 @@ export default function SEOTools() {
   });
 
   useEffect(() => {
+    fetchSites();
     fetchJobs();
   }, []);
 
@@ -315,16 +318,19 @@ export default function SEOTools() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-muted)' }}>Site</label>
-                <input
-                  type="text"
+                <select
                   value={filters.site_id}
                   onChange={(e) => setFilters({ ...filters, site_id: e.target.value })}
-                  placeholder="Site ID"
                   className={inputClassName}
                   style={inputStyle}
-                  onFocus={(e) => Object.assign(e.currentTarget.style, inputFocusStyle)}
-                  onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
-                />
+                >
+                  <option value="">Tüm Siteler</option>
+                  {sites.map((site: Site) => (
+                    <option key={site.id} value={site.id.toString()}>
+                      {site.name} ({site.platform})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-muted)' }}>Durum</label>
