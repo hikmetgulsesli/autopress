@@ -14,10 +14,11 @@ import settingsRoutes from './routes/settings';
 import searchConsoleRoutes from './routes/searchconsole';
 import schedulerRoutes from './routes/scheduler';
 import { startScheduler, getSchedulerStatus } from './services/scheduler.service';
+import { query } from './db/connection';
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 const PORT = process.env.PORT || 4519;
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:3519', credentials: true }));
@@ -36,23 +37,42 @@ app.use('/api/search-console', searchConsoleRoutes);
 app.use('/api/scheduler', schedulerRoutes);
 
 // Health check
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', async (_req, res) => {
+  let dbStatus: 'healthy' | 'degraded' = 'healthy';
+  
+  try {
+    // Check database connectivity with a 2-second timeout
+    await Promise.race([
+      query('SELECT 1'),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('DB_TIMEOUT')), 2000)
+      ),
+    ]);
+  } catch (err) {
+    dbStatus = 'degraded';
+    logger.warn('Health check: Database connectivity issue', { error: (err as Error).message });
+  }
+  
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(), 
     version: '1.0.0',
+    db_status: dbStatus,
     scheduler: getSchedulerStatus(),
   });
 });
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  logger.info(`AutoPress API running on port ${PORT}`);
-  
-  // Start the scheduler cron job
-  startScheduler();
-  logger.info('Scheduler started');
-});
+// Only start the server if this file is run directly (not imported for testing)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    logger.info(`AutoPress API running on port ${PORT}`);
+    
+    // Start the scheduler cron job
+    startScheduler();
+    logger.info('Scheduler started');
+  });
+}
 
 export default app;
