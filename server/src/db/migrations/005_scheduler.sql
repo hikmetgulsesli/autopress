@@ -23,44 +23,24 @@ CREATE INDEX IF NOT EXISTS idx_publish_queue_status ON publish_queue(status);
 CREATE INDEX IF NOT EXISTS idx_publish_queue_scheduled_at ON publish_queue(scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_publish_queue_article_id ON publish_queue(article_id);
 
--- Alter existing publish_history table to add new columns if they don't exist
-DO $$
-BEGIN
-  -- Add queue_id column if it doesn't exist
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name = 'publish_history' AND column_name = 'queue_id') THEN
-    ALTER TABLE publish_history ADD COLUMN queue_id INTEGER REFERENCES publish_queue(id) ON DELETE SET NULL;
-  END IF;
+-- Create publish_history table if not exists (enhanced version)
+CREATE TABLE IF NOT EXISTS publish_history (
+  id SERIAL PRIMARY KEY,
+  article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+  site_id INTEGER REFERENCES sites(id) ON DELETE SET NULL,
+  queue_id INTEGER REFERENCES publish_queue(id) ON DELETE SET NULL,
+  platform VARCHAR(20) NOT NULL,
+  platform_post_id VARCHAR(255),
+  status VARCHAR(20) NOT NULL,
+  error_message TEXT,
+  attempt_number INTEGER DEFAULT 1,
+  published_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-  -- Add platform column if it doesn't exist
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name = 'publish_history' AND column_name = 'platform') THEN
-    ALTER TABLE publish_history ADD COLUMN platform VARCHAR(20) NOT NULL DEFAULT 'wordpress';
-  END IF;
-
-  -- Add platform_post_id column if it doesn't exist
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name = 'publish_history' AND column_name = 'platform_post_id') THEN
-    ALTER TABLE publish_history ADD COLUMN platform_post_id VARCHAR(255);
-  END IF;
-
-  -- Add attempt_number column if it doesn't exist
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name = 'publish_history' AND column_name = 'attempt_number') THEN
-    ALTER TABLE publish_history ADD COLUMN attempt_number INTEGER DEFAULT 1;
-  END IF;
-END $$;
-
--- Create indexes for publish history
+-- Create index for publish history
 CREATE INDEX IF NOT EXISTS idx_publish_history_article_id ON publish_history(article_id);
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_publish_history_queue_id') THEN
-    CREATE INDEX idx_publish_history_queue_id ON publish_history(queue_id);
-  END IF;
-END $$;
-
+CREATE INDEX IF NOT EXISTS idx_publish_history_queue_id ON publish_history(queue_id);
 CREATE INDEX IF NOT EXISTS idx_publish_history_published_at ON publish_history(published_at);
 
 -- Update schedules table to support publish date/time with timezone

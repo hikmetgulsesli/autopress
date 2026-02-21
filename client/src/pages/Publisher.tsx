@@ -21,11 +21,8 @@ import {
   ChevronLeft,
   ChevronRight,
   MoreVertical,
-  Play,
-  Loader2,
 } from 'lucide-react';
 import api from '../services/api';
-import { notify } from '../utils/toast.tsx';
 import { Article, Site, PublishHistory, PublishQueueItem } from '../types';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -231,7 +228,6 @@ export default function Publisher() {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [calendarView, setCalendarView] = useState<View>('month');
   const [calendarDate, setCalendarDate] = useState(new Date());
-  const [publishingItemId, setPublishingItemId] = useState<number | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -260,11 +256,10 @@ export default function Publisher() {
   const handleSchedule = async (data: ScheduleData) => {
     try {
       await api.post('/publish/schedule', data);
-      notify.success('Makale başarıyla zamanlandı');
       fetchData();
     } catch (err) {
       console.error('Failed to schedule article:', err);
-      notify.error('Makale zamanlanırken bir hata oluştu');
+      alert('Makale zamanlanırken bir hata oluştu.');
     }
   };
 
@@ -272,45 +267,20 @@ export default function Publisher() {
     if (!confirm('Bu zamanlanmış yayını iptal etmek istediğinize emin misiniz?')) return;
     try {
       await api.delete(`/publish/schedule/${articleId}`);
-      notify.success('Zamanlama iptal edildi');
       fetchData();
     } catch (err) {
       console.error('Failed to cancel schedule:', err);
-      notify.error('Zamanlama iptal edilirken bir hata oluştu');
+      alert('Zamanlama iptal edilirken bir hata oluştu.');
     }
   };
 
   const handleReschedule = async (articleId: number, newDate: string) => {
     try {
       await api.patch(`/publish/schedule/${articleId}`, { scheduledAt: newDate });
-      notify.success('Yeniden zamanlama başarılı');
       fetchData();
     } catch (err) {
       console.error('Failed to reschedule:', err);
-      notify.error('Yeniden zamanlama yapılırken bir hata oluştu');
-    }
-  };
-
-  const handlePublishNow = async (item: PublishQueueItem) => {
-    if (!confirm(`"${item.title}" makalesini şimdi yayınlamak istediğinize emin misiniz?`)) return;
-    
-    setPublishingItemId(item.id);
-    
-    try {
-      const response = await api.post('/publish/publish-now', {
-        articleId: item.id,
-        siteId: item.site_id,
-        platform: item.platform,
-      });
-      
-      notify.success('Makale başarıyla yayınlandı');
-      fetchData();
-    } catch (err: any) {
-      console.error('Failed to publish article:', err);
-      const errorMessage = err.response?.data?.error?.message || 'Makale yayınlanırken bir hata oluştu';
-      notify.error(errorMessage);
-    } finally {
-      setPublishingItemId(null);
+      alert('Yeniden zamanlama yapılırken bir hata oluştu.');
     }
   };
 
@@ -462,24 +432,8 @@ export default function Publisher() {
                     </div>
                     <div className="flex items-center gap-2 ml-4">
                       <button
-                        onClick={() => handlePublishNow(item)}
-                        disabled={publishingItemId === item.id}
-                        className="flex items-center gap-1 px-3 py-2 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                        aria-label="Şimdi yayınla"
-                        title="Şimdi yayınla"
-                      >
-                        {publishingItemId === item.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Play className="w-4 h-4" />
-                        )}
-                        <span className="text-sm font-medium">
-                          {publishingItemId === item.id ? 'Yayınlanıyor...' : 'Şimdi Yayınla'}
-                        </span>
-                      </button>
-                      <button
                         onClick={() => handleCancelSchedule(item.id)}
-                        className="p-2 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg transition-colors cursor-pointer"
+                        className="p-2 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg transition-colors"
                         aria-label="İptal et"
                         title="İptal et"
                       >

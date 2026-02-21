@@ -195,7 +195,6 @@ describe('Publisher API Integration', () => {
       schedule: '/publish/schedule',
       cancel: '/publish/schedule/1',
       reschedule: '/publish/schedule/1',
-      publishNow: '/publish/publish-now',
     };
 
     expect(endpoints.queue).toBe('/publish/queue');
@@ -203,7 +202,6 @@ describe('Publisher API Integration', () => {
     expect(endpoints.schedule).toBe('/publish/schedule');
     expect(endpoints.cancel).toBe('/publish/schedule/1');
     expect(endpoints.reschedule).toBe('/publish/schedule/1');
-    expect(endpoints.publishNow).toBe('/publish/publish-now');
   });
 
   it('should validate schedule request body structure', () => {
@@ -231,34 +229,6 @@ describe('Publisher API Integration', () => {
 
     expect(rescheduleRequest).toHaveProperty('scheduledAt');
     expect(typeof rescheduleRequest.scheduledAt).toBe('string');
-  });
-
-  it('should validate publish-now request body structure', () => {
-    const publishNowRequest = {
-      articleId: 1,
-      siteId: 1,
-      platform: 'wordpress' as const,
-    };
-
-    expect(publishNowRequest).toHaveProperty('articleId');
-    expect(publishNowRequest).toHaveProperty('siteId');
-    expect(publishNowRequest).toHaveProperty('platform');
-    expect(typeof publishNowRequest.articleId).toBe('number');
-    expect(typeof publishNowRequest.siteId).toBe('number');
-    expect(typeof publishNowRequest.platform).toBe('string');
-    expect(['wordpress', 'blogger']).toContain(publishNowRequest.platform);
-  });
-
-  it('should validate publish-now request with blogger platform', () => {
-    const publishNowRequest = {
-      articleId: 2,
-      siteId: 2,
-      platform: 'blogger' as const,
-    };
-
-    expect(publishNowRequest.platform).toBe('blogger');
-    expect(publishNowRequest.articleId).toBe(2);
-    expect(publishNowRequest.siteId).toBe(2);
   });
 });
 
@@ -301,89 +271,5 @@ describe('Publisher Status Handling', () => {
       
       expect(['scheduled', 'pending', 'publishing']).toContain(queueItem.status);
     });
-  });
-});
-
-describe('Publish Now Button', () => {
-  it('should validate publish now button requirements', () => {
-    // Button should be visible in queue list
-    // Button should trigger API call with loading spinner
-    // Success toast on completion
-    // Error toast on failure
-    // Queue refreshes after publish
-    expect(true).toBe(true);
-  });
-
-  it('should validate queue item has required fields for publish now', () => {
-    const queueItem = {
-      id: 1,
-      site_id: 1,
-      title: 'Test Article',
-      slug: 'test-article',
-      excerpt: 'Test excerpt',
-      status: 'scheduled' as const,
-      platform: 'wordpress' as const,
-      scheduled_at: new Date().toISOString(),
-      site_name: 'Test Site',
-    };
-
-    // Required fields for publish now
-    expect(queueItem).toHaveProperty('id');
-    expect(queueItem).toHaveProperty('site_id');
-    expect(queueItem).toHaveProperty('platform');
-    expect(queueItem).toHaveProperty('title');
-    
-    // Validate types
-    expect(typeof queueItem.id).toBe('number');
-    expect(typeof queueItem.site_id).toBe('number');
-    expect(typeof queueItem.platform).toBe('string');
-    expect(typeof queueItem.title).toBe('string');
-  });
-
-  it('should validate loading state structure for publish now', () => {
-    // Loading state tracks which item is being published
-    const publishingItemId: number | null = 1;
-    expect(typeof publishingItemId).toBe('number');
-    
-    const noPublishingItem: number | null = null;
-    expect(noPublishingItem).toBeNull();
-  });
-
-  it('should validate publish now response structure', () => {
-    const successResponse = {
-      success: true,
-      message: 'Makale başarıyla yayınlandı',
-      data: {
-        articleId: 1,
-        platform: 'wordpress',
-        platformPostId: '123',
-        publishedUrl: 'https://example.com/test-article',
-        publishedAt: new Date().toISOString(),
-      },
-    };
-
-    expect(successResponse.success).toBe(true);
-    expect(successResponse).toHaveProperty('message');
-    expect(successResponse).toHaveProperty('data');
-    expect(successResponse.data).toHaveProperty('articleId');
-    expect(successResponse.data).toHaveProperty('platform');
-    expect(successResponse.data).toHaveProperty('platformPostId');
-    expect(successResponse.data).toHaveProperty('publishedUrl');
-    expect(successResponse.data).toHaveProperty('publishedAt');
-  });
-
-  it('should validate publish now error response structure', () => {
-    const errorResponse = {
-      error: {
-        code: 'PUBLISH_ERROR',
-        message: 'WordPress API bilgileri eksik. Site ayarlarından API bilgilerini girin.',
-      },
-    };
-
-    expect(errorResponse).toHaveProperty('error');
-    expect(errorResponse.error).toHaveProperty('code');
-    expect(errorResponse.error).toHaveProperty('message');
-    expect(typeof errorResponse.error.code).toBe('string');
-    expect(typeof errorResponse.error.message).toBe('string');
   });
 });

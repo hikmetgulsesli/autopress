@@ -316,51 +316,8 @@ class WordPressClient {
   }
 }
 
-// Site credentials cache to avoid repeated DB queries
-const siteCredentialsCache = new Map<number, WordPressConfig>();
-
-// Get WordPress config from site record or environment
-const getWordPressConfig = async (siteId?: number): Promise<WordPressConfig> => {
-  // If siteId provided, try to get credentials from site record
-  if (siteId) {
-    // Check cache first
-    if (siteCredentialsCache.has(siteId)) {
-      return siteCredentialsCache.get(siteId)!;
-    }
-
-    try {
-      const result = await query(
-        'SELECT domain, api_credentials FROM sites WHERE id = $1 AND platform = $2',
-        [siteId, 'wordpress']
-      );
-
-      if (result.rows.length > 0) {
-        const site = result.rows[0];
-        const credentials = site.api_credentials || {};
-        
-        // Check if site has WordPress credentials
-        if (credentials.wordpress) {
-          const config: WordPressConfig = {
-            siteUrl: credentials.wordpress.siteUrl || site.domain,
-            username: credentials.wordpress.username,
-            applicationPassword: credentials.wordpress.applicationPassword,
-          };
-
-          // Validate that we have all required fields
-          if (config.siteUrl && config.username && config.applicationPassword) {
-            // Cache the credentials
-            siteCredentialsCache.set(siteId, config);
-            return config;
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch site credentials:', err);
-      // Fall through to environment variables
-    }
-  }
-
-  // Fallback to environment variables
+// Get WordPress config from environment or database
+const getWordPressConfig = (): WordPressConfig => {
   const siteUrl = process.env.WORDPRESS_SITE_URL;
   const username = process.env.WORDPRESS_USERNAME;
   const applicationPassword = process.env.WORDPRESS_APP_PASSWORD;
@@ -368,16 +325,11 @@ const getWordPressConfig = async (siteId?: number): Promise<WordPressConfig> => 
   if (!siteUrl || !username || !applicationPassword) {
     throw {
       code: 'MISSING_CONFIG',
-      message: 'WordPress configuration not found. Set WORDPRESS_SITE_URL, WORDPRESS_USERNAME, and WORDPRESS_APP_PASSWORD environment variables, or configure api_credentials in the site record.',
+      message: 'WordPress configuration not found. Set WORDPRESS_SITE_URL, WORDPRESS_USERNAME, and WORDPRESS_APP_PASSWORD environment variables.',
     } as WordPressServiceError;
   }
 
   return { siteUrl, username, applicationPassword };
-};
-
-// Clear credentials cache (useful for testing or when credentials are updated)
-export const clearCredentialsCache = (): void => {
-  siteCredentialsCache.clear();
 };
 
 // Log publish history to database
@@ -402,10 +354,9 @@ const logPublishHistory = async (
 
 export const publishPost = async (
   articleId: number,
-  post: WordPressPost,
-  siteId?: number
+  post: WordPressPost
 ): Promise<WordPressPublishResult> => {
-  const config = await getWordPressConfig(siteId);
+  const config = getWordPressConfig();
   const wp = new WordPressClient(config);
 
   const result = await wp.createPost(post);
@@ -422,10 +373,9 @@ export const publishPost = async (
 
 export const updatePost = async (
   wordpressId: number,
-  post: Partial<WordPressPost>,
-  siteId?: number
+  post: Partial<WordPressPost>
 ): Promise<WordPressPublishResult> => {
-  const config = await getWordPressConfig(siteId);
+  const config = getWordPressConfig();
   const wp = new WordPressClient(config);
 
   const result = await wp.updatePost(wordpressId, post);
@@ -438,15 +388,15 @@ export const updatePost = async (
   };
 };
 
-export const deletePost = async (wordpressId: number, siteId?: number): Promise<boolean> => {
-  const config = await getWordPressConfig(siteId);
+export const deletePost = async (wordpressId: number): Promise<boolean> => {
+  const config = getWordPressConfig();
   const wp = new WordPressClient(config);
 
   return wp.deletePost(wordpressId);
 };
 
-export const publishPage = async (page: WordPressPage, siteId?: number): Promise<WordPressPublishResult> => {
-  const config = await getWordPressConfig(siteId);
+export const publishPage = async (page: WordPressPage): Promise<WordPressPublishResult> => {
+  const config = getWordPressConfig();
   const wp = new WordPressClient(config);
 
   const result = await wp.createPage(page);
@@ -459,22 +409,22 @@ export const publishPage = async (page: WordPressPage, siteId?: number): Promise
   };
 };
 
-export const uploadMedia = async (imageUrl: string, title?: string, siteId?: number): Promise<WordPressMedia> => {
-  const config = await getWordPressConfig(siteId);
+export const uploadMedia = async (imageUrl: string, title?: string): Promise<WordPressMedia> => {
+  const config = getWordPressConfig();
   const wp = new WordPressClient(config);
 
   return wp.uploadMedia(imageUrl, title);
 };
 
-export const getCategories = async (siteId?: number): Promise<Array<{ id: number; name: string }>> => {
-  const config = await getWordPressConfig(siteId);
+export const getCategories = async (): Promise<Array<{ id: number; name: string }>> => {
+  const config = getWordPressConfig();
   const wp = new WordPressClient(config);
 
   return wp.getCategories();
 };
 
-export const getTags = async (siteId?: number): Promise<Array<{ id: number; name: string }>> => {
-  const config = await getWordPressConfig(siteId);
+export const getTags = async (): Promise<Array<{ id: number; name: string }>> => {
+  const config = getWordPressConfig();
   const wp = new WordPressClient(config);
 
   return wp.getTags();
