@@ -47,6 +47,19 @@ describe('TrendExplorer', () => {
     },
   ];
 
+  const mockSearchResults = [
+    {
+      id: 1,
+      topic: 'Yapay Zeka',
+      score: 95,
+      source: 'Google Trends',
+      language: 'tr',
+      region: 'TR',
+      raw_data: { news_count: 150 },
+      checked_at: '2024-01-15T10:00:00Z',
+    },
+  ];
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -215,5 +228,247 @@ describe('TrendExplorer', () => {
     expect(regionSelect).toContainElement(screen.getByText('Tüm Bölgeler'));
     expect(regionSelect).toContainElement(screen.getByText('Türkiye'));
     expect(regionSelect).toContainElement(screen.getByText('ABD'));
+  });
+
+  // Search functionality tests
+  describe('Search Functionality', () => {
+    it('renders search input', () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      const searchInput = screen.getByLabelText('Trend ara');
+      expect(searchInput).toBeInTheDocument();
+      expect(searchInput).toHaveAttribute('placeholder', 'Trend ara...');
+    });
+
+    it('renders search button', () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      // Get submit button by type
+      const searchButton = screen.getByRole('button', { name: /^Ara$/i });
+      expect(searchButton).toBeInTheDocument();
+    });
+
+    it('triggers API call when search button is clicked', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: { data: mockSearchResults } });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'yapay' } });
+
+      const searchButton = screen.getByRole('button', { name: /^Ara$/i });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('/trends/search'));
+        expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('keyword=yapay'));
+      });
+    });
+
+    it('triggers API call when form is submitted', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: { data: mockSearchResults } });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'yapay' } });
+
+      const form = searchInput.closest('form');
+      fireEvent.submit(form!);
+
+      await waitFor(() => {
+        expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('/trends/search'));
+        expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('keyword=yapay'));
+      });
+    });
+
+    it('displays search results', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: { data: mockSearchResults } });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'yapay' } });
+
+      const searchButton = screen.getByRole('button', { name: /^Ara$/i });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('"yapay" için arama sonuçları')).toBeInTheDocument();
+      });
+    });
+
+    it('shows clear search button when search input has value', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'yapay' } });
+
+      const clearButton = screen.getByLabelText('Aramayı temizle');
+      expect(clearButton).toBeInTheDocument();
+    });
+
+    it('clears search and fetches all trends when clear button is clicked', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: { data: mockSearchResults } });
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Perform search
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'yapay' } });
+
+      const searchButton = screen.getByRole('button', { name: /^Ara$/i });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('/trends/search'));
+      });
+
+      // Clear search
+      const clearButton = screen.getByLabelText('Aramayı temizle');
+      fireEvent.click(clearButton);
+
+      await waitFor(() => {
+        expect(searchInput).toHaveValue('');
+      });
+    });
+
+    it('shows empty state when search returns no results', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: { data: [] } });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'nonexistent' } });
+
+      const searchButton = screen.getByRole('button', { name: /^Ara$/i });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Arama sonucu bulunamadı')).toBeInTheDocument();
+        expect(screen.getByText('"nonexistent" için sonuç bulunamadı. Farklı bir anahtar kelime deneyin.')).toBeInTheDocument();
+      });
+    });
+
+    it('disables search button when input is empty', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      const searchButton = screen.getByRole('button', { name: /^Ara$/i });
+      expect(searchButton).toBeDisabled();
+    });
+
+    it('includes region filter in search request', async () => {
+      mockApi.get.mockResolvedValueOnce({ data: mockTrends });
+      mockApi.get.mockResolvedValueOnce({ data: { data: mockSearchResults } });
+      
+      render(
+        <BrowserRouter>
+          <TrendExplorer />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Yapay Zeka')).toBeInTheDocument();
+      });
+
+      // Change region
+      const regionSelect = screen.getByLabelText('Bölge filtresi');
+      fireEvent.change(regionSelect, { target: { value: 'US' } });
+
+      await waitFor(() => {
+        expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('region=US'));
+      });
+
+      // Perform search
+      const searchInput = screen.getByLabelText('Trend ara');
+      fireEvent.change(searchInput, { target: { value: 'climate' } });
+
+      const searchButton = screen.getByRole('button', { name: /^Ara$/i });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('/trends/search'));
+        expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('keyword=climate'));
+        expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('region=US'));
+      });
+    });
   });
 });
