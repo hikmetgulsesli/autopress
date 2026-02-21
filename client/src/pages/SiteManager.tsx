@@ -32,7 +32,7 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
     try { 
       await onSave(form); 
       onClose(); 
-    } catch {} finally { 
+    } catch { /* ignore */ } finally { 
       setSaving(false); 
     }
   };

@@ -144,11 +144,8 @@ describe('Site Connection Test Button', () => {
 
     mockTestConnection.mockResolvedValue(mockResult);
 
-    // Simulate previous test status
-    let testStatus = { type: 'error' as const, message: 'Previous error' };
-
     // Reset status before new test
-    testStatus = { type: null, message: '' };
+    const testStatus = { type: null as string | null, message: '' };
 
     // Call the API
     await mockTestConnection(1);
@@ -168,11 +165,9 @@ describe('Site Connection Test Button', () => {
 
     mockTestConnection.mockResolvedValue(mockResult);
 
-    let testingSiteId: number | null = 1;
-
     await mockTestConnection(1);
 
-    testingSiteId = null;
+    const testingSiteId: number | null = null;
 
     expect(testingSiteId).toBeNull();
   });
