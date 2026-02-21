@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { authenticate, AuthRequest } from '../middleware/auth';
 import { 
   submitUrlForIndexing, 
   checkUrlIndexStatus, 
@@ -11,8 +10,6 @@ import {
   getQuotaInfo,
   SearchConsoleServiceError 
 } from '../services/searchconsole.service';
-import { validateBody, validateQuery } from '../middleware/validate';
-import { indexUrlSchema, notifyUrlSchema, urlQuerySchema, batchSubmitSchema } from '../middleware/schemas';
 
 const router = Router();
 
@@ -34,7 +31,7 @@ router.get('/health', async (_req: Request, res: Response) => {
 // GET /api/search-console/quota - Get quota information
 router.get('/quota', async (_req: Request, res: Response) => {
   try {
-    const quota = await getQuotaInfo();
+    const quota = getQuotaInfo();
     res.json(quota);
   } catch (err) {
     res.status(500).json({
@@ -47,9 +44,29 @@ router.get('/quota', async (_req: Request, res: Response) => {
 });
 
 // POST /api/search-console/index - Submit URL for indexing
-router.post('/index', authenticate, validateBody(indexUrlSchema), async (req: AuthRequest, res: Response) => {
+router.post('/index', async (req: Request, res: Response) => {
   try {
-    const { url, type } = req.body;
+    const { url, type = 'URL_UPDATED' } = req.body;
+
+    if (!url) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_URL',
+          message: 'URL is required',
+        },
+      });
+      return;
+    }
+
+    if (type !== 'URL_UPDATED' && type !== 'URL_DELETED') {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_TYPE',
+          message: 'Type must be either URL_UPDATED or URL_DELETED',
+        },
+      });
+      return;
+    }
 
     const result = await submitUrlForIndexing({ url, type });
 
@@ -108,9 +125,19 @@ router.post('/index', authenticate, validateBody(indexUrlSchema), async (req: Au
 });
 
 // POST /api/search-console/index/notify-update - Quick endpoint for URL_UPDATED
-router.post('/index/notify-update', authenticate, validateBody(notifyUrlSchema), async (req: AuthRequest, res: Response) => {
+router.post('/index/notify-update', async (req: Request, res: Response) => {
   try {
     const { url } = req.body;
+
+    if (!url) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_URL',
+          message: 'URL is required',
+        },
+      });
+      return;
+    }
 
     const result = await notifyUrlUpdated(url);
     res.json(result);
@@ -141,9 +168,19 @@ router.post('/index/notify-update', authenticate, validateBody(notifyUrlSchema),
 });
 
 // POST /api/search-console/index/notify-delete - Quick endpoint for URL_DELETED
-router.post('/index/notify-delete', authenticate, validateBody(notifyUrlSchema), async (req: AuthRequest, res: Response) => {
+router.post('/index/notify-delete', async (req: Request, res: Response) => {
   try {
     const { url } = req.body;
+
+    if (!url) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_URL',
+          message: 'URL is required',
+        },
+      });
+      return;
+    }
 
     const result = await notifyUrlDeleted(url);
     res.json(result);
@@ -174,11 +211,21 @@ router.post('/index/notify-delete', authenticate, validateBody(notifyUrlSchema),
 });
 
 // GET /api/search-console/status?url=... - Check indexing status
-router.get('/status', authenticate, validateQuery(urlQuerySchema), async (req: AuthRequest, res: Response) => {
+router.get('/status', async (req: Request, res: Response) => {
   try {
-    const { url } = req.query;
+    const url = req.query.url as string;
 
-    const result = await checkUrlIndexStatus({ url: url as string });
+    if (!url) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_URL',
+          message: 'URL query parameter is required',
+        },
+      });
+      return;
+    }
+
+    const result = await checkUrlIndexStatus({ url });
 
     res.json(result);
   } catch (err) {
@@ -224,11 +271,21 @@ router.get('/status', authenticate, validateQuery(urlQuerySchema), async (req: A
 });
 
 // GET /api/search-console/metadata?url=... - Get URL notification metadata
-router.get('/metadata', authenticate, validateQuery(urlQuerySchema), async (req: AuthRequest, res: Response) => {
+router.get('/metadata', async (req: Request, res: Response) => {
   try {
-    const { url } = req.query;
+    const url = req.query.url as string;
 
-    const result = await getUrlNotificationMetadata(url as string);
+    if (!url) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_URL',
+          message: 'URL query parameter is required',
+        },
+      });
+      return;
+    }
+
+    const result = await getUrlNotificationMetadata(url);
 
     if (result === null) {
       res.status(404).json({
@@ -264,9 +321,29 @@ router.get('/metadata', authenticate, validateQuery(urlQuerySchema), async (req:
 });
 
 // POST /api/search-console/batch - Batch submit URLs
-router.post('/batch', authenticate, validateBody(batchSubmitSchema), async (req: AuthRequest, res: Response) => {
+router.post('/batch', async (req: Request, res: Response) => {
   try {
-    const { urls, type } = req.body;
+    const { urls, type = 'URL_UPDATED' } = req.body;
+
+    if (!urls || !Array.isArray(urls)) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_URLS',
+          message: 'urls array is required',
+        },
+      });
+      return;
+    }
+
+    if (type !== 'URL_UPDATED' && type !== 'URL_DELETED') {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_TYPE',
+          message: 'Type must be either URL_UPDATED or URL_DELETED',
+        },
+      });
+      return;
+    }
 
     const results = await batchSubmitUrls(urls, type);
 

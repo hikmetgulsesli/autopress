@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import NotFound from '../pages/NotFound';
 import App from '../App';
@@ -77,17 +77,29 @@ describe('NotFound Component', () => {
 });
 
 describe('App 404 Routing', () => {
+  const mockCheckAuth = vi.fn();
+  
   beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useAuthStore).mockImplementation((selector: any) => {
+      const state = {
+        isAuthenticated: true,
+        user: { id: 1, email: 'test@example.com', username: 'testuser', name: 'Test' },
+        isLoading: false,
+        login: vi.fn(),
+        logout: vi.fn(),
+        checkAuth: mockCheckAuth,
+      };
+      return selector ? selector(state) : state;
+    });
+    mockCheckAuth.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
     vi.clearAllMocks();
   });
 
   it('shows 404 page for invalid routes when authenticated', () => {
-    // Mock authenticated state - return the whole state object
-    vi.mocked(useAuthStore).mockImplementation((selector: any) => {
-      const state = { isAuthenticated: true, user: { id: 1, name: 'Test' } };
-      return selector ? selector(state) : state;
-    });
-
     render(
       <MemoryRouter initialEntries={['/invalid-route']}>
         <App />
@@ -114,5 +126,29 @@ describe('App 404 Routing', () => {
 
     // Should redirect to login - check for login form elements
     expect(screen.getByRole('button', { name: /Giriş Yap/i })).toBeInTheDocument();
+  });
+
+  it('shows NotFound for deeply nested invalid routes', async () => {
+    render(
+      <MemoryRouter initialEntries={['/invalid-route']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('404')).toBeInTheDocument();
+    });
+  });
+
+  it('shows NotFound for routes with special characters', async () => {
+    render(
+      <MemoryRouter initialEntries={['/test%20path?query=value']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('404')).toBeInTheDocument();
+    });
   });
 });

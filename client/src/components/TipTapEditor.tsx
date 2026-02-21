@@ -12,7 +12,7 @@ import {
   Undo,
   Redo,
 } from 'lucide-react';
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 
 interface TipTapEditorProps {
   content?: string;
@@ -45,13 +45,6 @@ export function TipTapEditor({ content = '', onChange, placeholder }: TipTapEdit
       },
     },
   });
-
-  // Update editor content when content prop changes externally
-  useEffect(() => {
-    if (editor && content !== editor.getHTML() && editor.commands?.setContent) {
-      editor.commands.setContent(content);
-    }
-  }, [editor, content]);
 
   const setLink = useCallback(() => {
     if (!editor) return;

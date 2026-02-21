@@ -9,7 +9,6 @@ import {
   autoSubmitAfterPublish,
   checkServiceHealth,
   getQuotaInfo,
-  getQuotaInfoSync,
   SearchConsoleServiceError
 } from './searchconsole.service';
 
@@ -20,11 +19,6 @@ vi.mock('../utils/logger', () => ({
     error: vi.fn(),
     warn: vi.fn(),
   },
-}));
-
-// Mock the database query
-vi.mock('../db/connection', () => ({
-  query: vi.fn(),
 }));
 
 describe('SearchConsoleService', () => {
@@ -275,8 +269,8 @@ describe('SearchConsoleService', () => {
   });
 
   describe('Quota Information', () => {
-    it('should return quota info with correct structure', async () => {
-      const quota = await getQuotaInfo();
+    it('should return quota info with correct structure', () => {
+      const quota = getQuotaInfo();
       
       expect(quota).toMatchObject({
         dailyQuota: 200,
@@ -286,8 +280,8 @@ describe('SearchConsoleService', () => {
       });
     });
 
-    it('should calculate remaining quota correctly', async () => {
-      const quota = await getQuotaInfo();
+    it('should calculate remaining quota correctly', () => {
+      const quota = getQuotaInfo();
       expect(quota.remainingQuota).toBe(quota.dailyQuota - quota.usedQuota);
     });
   });

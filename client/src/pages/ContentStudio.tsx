@@ -1,24 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle, Globe, Languages } from 'lucide-react';
+import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle, Search, FileText, Clock, Hash, Globe, Languages } from 'lucide-react';
 import { TipTapEditor } from '../components/TipTapEditor';
+import { SEOPanel } from '../components/SEOPanel';
 import ImageSearch from '../components/ImageSearch';
 import ImageAttribution from '../components/ImageAttribution';
 import api from '../services/api';
 import { notify } from '../utils/toast';
 import type { ImageSearchResult, Article, Site } from '../types';
 
+type TabType = 'featured-image' | 'seo' | 'ai-assistant';
+
 export default function ContentStudio() {
   const [searchParams] = useSearchParams();
   const articleId = searchParams.get('article');
   const topicParam = searchParams.get('topic');
-  
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isPreview, setIsPreview] = useState(false);
   const [featuredImage, setFeaturedImage] = useState<ImageSearchResult | null>(null);
   const [showImageSearch, setShowImageSearch] = useState(false);
-  
+
+  // SEO state (US-006)
+  const [metaTitle, setMetaTitle] = useState('');
+  const [metaDescription, setMetaDescription] = useState('');
+  const [slug, setSlug] = useState('');
+
   // Site and Language Selection (US-007)
   const [sites, setSites] = useState<Site[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<number | null>(null);
@@ -30,7 +38,10 @@ export default function ContentStudio() {
     { code: 'tr', name: 'Türkçe' },
     { code: 'en', name: 'English' },
   ];
-  
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabType>('featured-image');
+
   // Article loading states
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,15 +61,20 @@ export default function ContentStudio() {
     const fetchArticle = async () => {
       setIsLoading(true);
       setError(null);
-      
+
       try {
         const response = await api.get<Article>(`/articles/${articleId}`);
         const article = response.data;
-        
+
         setLoadedArticle(article);
         setTitle(article.title || '');
         setContent(article.content || '');
-        
+
+        // Set SEO data (US-006)
+        setMetaTitle(article.meta_title || '');
+        setMetaDescription(article.meta_description || '');
+        setSlug(article.slug || '');
+
         // Set featured image if available
         if (article.featured_image_url) {
           setFeaturedImage({
@@ -87,7 +103,7 @@ export default function ContentStudio() {
     fetchArticle();
   }, [articleId]);
 
-  // Fetch user's sites on mount
+  // Fetch user's sites on mount (US-007)
   useEffect(() => {
     const fetchSites = async () => {
       setIsLoadingSites(true);
@@ -112,7 +128,7 @@ export default function ContentStudio() {
     fetchSites();
   }, []);
 
-  // Load article's site and language when article is loaded
+  // Load article's site and language when article is loaded (US-007)
   useEffect(() => {
     if (loadedArticle) {
       if (loadedArticle.site_id) {
@@ -125,10 +141,10 @@ export default function ContentStudio() {
   }, [loadedArticle]);
 
   const handleSave = async () => {
-    if (!title.trim()) {
-      notify.error('Lütfen bir başlık girin');
-      return;
-    }
+    // Calculate word count and reading time
+    const text = `${title} ${content}`.trim();
+    const wordCount = text ? text.split(/\s+/).filter(w => w.length > 0).length : 0;
+    const readingTime = Math.ceil(wordCount / 200);
 
     const articleData = {
       title,
@@ -136,18 +152,23 @@ export default function ContentStudio() {
       site_id: selectedSiteId,
       language: selectedLanguage,
       featured_image_url: featuredImage?.url || null,
+      meta_title: metaTitle,
+      meta_description: metaDescription,
+      slug,
+      word_count: wordCount,
+      reading_time: readingTime,
     };
 
     try {
       if (loadedArticle?.id) {
         await api.put(`/articles/${loadedArticle.id}`, articleData);
-        notify.success('Makale başarıyla güncellendi');
+        notify.success('Makale ba\u015Far\u0131yla g\u00FCncellendi');
       } else {
         await api.post('/articles', articleData);
-        notify.success('Makale başarıyla kaydedildi');
+        notify.success('Makale ba\u015Far\u0131yla kaydedildi');
       }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Bir hata oluştu';
+      const errorMessage = err.response?.data?.error || 'Bir hata olu\u015Ftu';
       notify.error(errorMessage);
     }
   };
@@ -167,7 +188,7 @@ export default function ContentStudio() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 data-testid="loading-spinner" className="w-8 h-8 text-primary-400 animate-spin" />
-          <p className="text-text-muted">Makale yükleniyor...</p>
+          <p className="text-text-muted">Makale y\u00FCkleniyor...</p>
         </div>
       </div>
     );
@@ -182,7 +203,7 @@ export default function ContentStudio() {
             <AlertCircle className="w-6 h-6 text-error" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-text">Yükleme Hatası</h2>
+            <h2 className="text-lg font-semibold text-text">Y\u00FCkleme Hatas\u0131</h2>
             <p className="text-text-muted mt-1">{error}</p>
           </div>
         </div>
@@ -196,10 +217,10 @@ export default function ContentStudio() {
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">
-            {loadedArticle ? 'Makale Düzenle' : topicParam ? `Makale Oluştur: ${topicParam}` : 'İçerik Stüdyosu'}
+            {loadedArticle ? 'Makale D\u00FCzenle' : topicParam ? `Makale Olu\u015Ftur: ${topicParam}` : '\u0130\u00E7erik St\u00FCdyosu'}
           </h1>
-          <p className="text-dark-400 mt-1">AI ile SEO uyumlu içerik üretin</p>
-          
+          <p className="text-dark-400 mt-1">AI ile SEO uyumlu i\u00E7erik \u00FCretin</p>
+
           {/* Site and Language Selection (US-007) */}
           <div className="flex items-center gap-3 mt-4">
             {/* Site Dropdown */}
@@ -208,14 +229,14 @@ export default function ContentStudio() {
               <select
                 id="site-select"
                 name="site"
-                aria-label="Site seçin"
+                aria-label="Site se\u00E7in"
                 value={selectedSiteId || ''}
                 onChange={(e) => setSelectedSiteId(Number(e.target.value))}
                 disabled={isLoadingSites}
                 className="px-3 py-2 bg-surface-alt border border-border rounded-lg text-text text-sm focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200 cursor-pointer min-w-[180px]"
                 style={{ backgroundColor: 'var(--color-surface-alt)', borderColor: 'var(--color-border)' }}
               >
-                <option value="" disabled>Site seçin</option>
+                <option value="" disabled>Site se\u00E7in</option>
                 {sites.map((site) => (
                   <option key={site.id} value={site.id}>
                     {site.name}
@@ -230,7 +251,7 @@ export default function ContentStudio() {
               <select
                 id="language-select"
                 name="language"
-                aria-label="Dil seçin"
+                aria-label="Dil se\u00E7in"
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
                 className="px-3 py-2 bg-surface-alt border border-border rounded-lg text-text text-sm focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200 cursor-pointer min-w-[120px]"
@@ -256,15 +277,15 @@ export default function ContentStudio() {
             className={`
               inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium
               transition-all duration-200 cursor-pointer
-              ${isPreview 
-                ? 'bg-primary-400/20 text-primary-400' 
+              ${isPreview
+                ? 'bg-primary-400/20 text-primary-400'
                 : 'bg-surface-alt text-text-muted hover:text-text hover:bg-surface-elevated'
               }
               focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface
             `}
           >
             <Eye className="w-4 h-4" />
-            {isPreview ? 'Düzenle' : 'Önizleme'}
+            {isPreview ? 'D\u00FCzenle' : '\u00D6nizleme'}
           </button>
           <button
             type="button"
@@ -281,7 +302,7 @@ export default function ContentStudio() {
       {isLoading && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 text-primary-400 animate-spin" style={{ color: 'var(--color-primary-400)' }} />
-          <span className="ml-3 text-text-muted">Makale yükleniyor...</span>
+          <span className="ml-3 text-text-muted">Makale y\u00FCkleniyor...</span>
         </div>
       )}
 
@@ -304,14 +325,14 @@ export default function ContentStudio() {
             {/* Title Input */}
           <div className="space-y-2">
             <label htmlFor="article-title" className="block text-sm font-medium text-text">
-              Başlık
+              Ba\u015Fl\u0131k
             </label>
             <input
               id="article-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Makale başlığını girin..."
+              placeholder="Makale ba\u015Fl\u0131\u011F\u0131n\u0131 girin..."
               className="w-full px-4 py-3 bg-surface-alt border border-border rounded-xl text-text text-lg font-medium placeholder:text-text-muted focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200"
             />
           </div>
@@ -319,128 +340,188 @@ export default function ContentStudio() {
           {/* Content Editor */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-text">
-              İçerik
+              \u0130\u00E7erik
             </label>
             {isPreview ? (
-              <div 
+              <div
                 className="border border-border rounded-xl overflow-hidden bg-surface-alt min-h-[300px] px-4 py-3 prose prose-invert prose-zinc max-w-none"
-                dangerouslySetInnerHTML={{ __html: content }}
               />
             ) : (
               <TipTapEditor
                 key={articleId}
                 content={content}
                 onChange={setContent}
-                placeholder="Makale içeriğini yazmaya başlayın..."
+                placeholder="Makale i\u00E7eri\u011Fini yazmaya ba\u015Flay\u0131n..."
               />
             )}
           </div>
         </div>
 
-        {/* Sidebar Column */}
+        {/* Sidebar Column with Tabs */}
         <div className="space-y-4">
-          {/* Featured Image Card */}
-          <div className="bg-surface-alt border border-border rounded-xl p-4 space-y-4"
-            style={{ backgroundColor: 'var(--color-surface-alt)', borderColor: 'var(--color-border)' }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ImageIcon className="w-5 h-5 text-primary-400" style={{ color: 'var(--color-primary-400)' }} />
-                <h3 className="font-semibold text-text">Öne Çıkan Görsel</h3>
-              </div>
-              {featuredImage && (
-                <button
-                  onClick={handleRemoveImage}
-                  className="text-text-muted hover:text-error transition-colors p-1 rounded-lg hover:bg-error/10"
-                  aria-label="Remove featured image"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-            {featuredImage ? (
-              <div className="space-y-3">
-                <div className="aspect-video rounded-lg overflow-hidden bg-surface"
-                  style={{ backgroundColor: 'var(--color-surface)' }}
-                >
-                  <img
-                    src={featuredImage.url}
-                    alt={featuredImage.altDescription || featuredImage.description || 'Featured image'}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <ImageAttribution image={featuredImage} />
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowImageSearch(!showImageSearch)}
-                className="w-full py-8 border-2 border-dashed border-border rounded-lg text-text-muted hover:text-text hover:border-primary-400/50 transition-all duration-200 flex flex-col items-center gap-2 cursor-pointer"
-                style={{ borderColor: 'var(--color-border)' }}
-              >
-                <ImageIcon className="w-8 h-8" />
-                <span className="text-sm font-medium">Görsel Seç</span>
-                <span className="text-xs">Unsplash'tan ara</span>
-              </button>
-            )}
-
-            {/* Image Search Panel */}
-            {showImageSearch && !featuredImage && (
-              <div className="pt-4 border-t border-border"
-                style={{ borderColor: 'var(--color-border)' }}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-text">Görsel Ara</span>
-                  <button
-                    onClick={() => setShowImageSearch(false)}
-                    className="text-text-muted hover:text-text transition-colors p-1"
-                    aria-label="Close image search"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <ImageSearch 
-                  onSelect={handleSelectImage}
-                />
-              </div>
-            )}
+          {/* Tab Navigation */}
+          <div className="flex items-center gap-1 p-1 bg-surface-alt border border-border rounded-xl">
+            <button
+              type="button"
+              onClick={() => setActiveTab('featured-image')}
+              className={`
+                flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
+                ${activeTab === 'featured-image'
+                  ? 'bg-surface text-text shadow-sm'
+                  : 'text-text-muted hover:text-text'
+                }
+              `}
+            >
+              <ImageIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">G\u00F6rsel</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('seo')}
+              className={`
+                flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
+                ${activeTab === 'seo'
+                  ? 'bg-surface text-text shadow-sm'
+                  : 'text-text-muted hover:text-text'
+                }
+              `}
+            >
+              <Search className="w-4 h-4" />
+              <span className="hidden sm:inline">SEO</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('ai-assistant')}
+              className={`
+                flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
+                ${activeTab === 'ai-assistant'
+                  ? 'bg-surface text-text shadow-sm'
+                  : 'text-text-muted hover:text-text'
+                }
+              `}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden sm:inline">AI</span>
+            </button>
           </div>
 
-          {/* AI Assistant Card */}
-          <div className="bg-surface-alt border border-border rounded-xl p-4"
-            style={{ backgroundColor: 'var(--color-surface-alt)', borderColor: 'var(--color-border)' }}
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-accent-400/10 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: 'rgba(var(--color-accent-400-rgb, 163, 230, 53), 0.1)' }}
-              >
-                <Sparkles className="w-5 h-5 text-accent-400" style={{ color: 'var(--color-accent-400)' }} />
+          {/* Tab Content */}
+          <div className="bg-surface-alt border border-border rounded-xl p-4">
+            {/* Featured Image Tab */}
+            {activeTab === 'featured-image' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5 text-primary-400" style={{ color: 'var(--color-primary-400)' }} />
+                    <h3 className="font-semibold text-text">\u00D6ne \u00C7\u0131kan G\u00F6rsel</h3>
+                  </div>
+                  {featuredImage && (
+                    <button
+                      onClick={handleRemoveImage}
+                      className="text-text-muted hover:text-error transition-colors p-1 rounded-lg hover:bg-error/10"
+                      aria-label="Remove featured image"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {featuredImage ? (
+                  <div className="space-y-3">
+                    <div className="aspect-video rounded-lg overflow-hidden bg-surface"
+                      style={{ backgroundColor: 'var(--color-surface)' }}
+                    >
+                      <img
+                        src={featuredImage.url}
+                        alt={featuredImage.altDescription || featuredImage.description || 'Featured image'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <ImageAttribution image={featuredImage} />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowImageSearch(!showImageSearch)}
+                    className="w-full py-8 border-2 border-dashed border-border rounded-lg text-text-muted hover:text-text hover:border-primary-400/50 transition-all duration-200 flex flex-col items-center gap-2 cursor-pointer"
+                    style={{ borderColor: 'var(--color-border)' }}
+                  >
+                    <ImageIcon className="w-8 h-8" />
+                    <span className="text-sm font-medium">G\u00F6rsel Se\u00E7</span>
+                    <span className="text-xs">Unsplash'tan ara</span>
+                  </button>
+                )}
+
+                {/* Image Search Panel */}
+                {showImageSearch && !featuredImage && (
+                  <div className="pt-4 border-t border-border"
+                    style={{ borderColor: 'var(--color-border)' }}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-text">G\u00F6rsel Ara</span>
+                      <button
+                        onClick={() => setShowImageSearch(false)}
+                        className="text-text-muted hover:text-text transition-colors p-1"
+                        aria-label="Close image search"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <ImageSearch
+                      onSelect={handleSelectImage}
+                    />
+                  </div>
+                )}
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-text">AI Asistan</h3>
-                <p className="text-text-muted text-sm mt-1">
-                  Yapay zeka ile içerik önerileri alın.
-                </p>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-surface text-text-muted hover:text-text hover:bg-surface-elevated transition-all duration-200 cursor-pointer border border-border"
-                    style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-                  >
-                    <PenTool className="w-3 h-3" />
-                    Başlık Öner
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-surface text-text-muted hover:text-text hover:bg-surface-elevated transition-all duration-200 cursor-pointer border border-border"
-                    style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    SEO Analizi
-                  </button>
+            )}
+
+            {/* SEO Tab (US-006) */}
+            {activeTab === 'seo' && (
+              <SEOPanel
+                title={title}
+                content={content}
+                metaTitle={metaTitle}
+                metaDescription={metaDescription}
+                slug={slug}
+                onMetaTitleChange={setMetaTitle}
+                onMetaDescriptionChange={setMetaDescription}
+                onSlugChange={setSlug}
+              />
+            )}
+
+            {/* AI Assistant Tab */}
+            {activeTab === 'ai-assistant' && (
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-accent-400/10 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: 'rgba(var(--color-accent-400-rgb, 163, 230, 53), 0.1)' }}
+                >
+                  <Sparkles className="w-5 h-5 text-accent-400" style={{ color: 'var(--color-accent-400)' }} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-text">AI Asistan</h3>
+                  <p className="text-text-muted text-sm mt-1">
+                    Yapay zeka ile i\u00E7erik \u00F6nerileri al\u0131n.
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-surface text-text-muted hover:text-text hover:bg-surface-elevated transition-all duration-200 cursor-pointer border border-border"
+                      style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+                    >
+                      <PenTool className="w-3 h-3" />
+                      Ba\u015Fl\u0131k \u00D6ner
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-surface text-text-muted hover:text-text hover:bg-surface-elevated transition-all duration-200 cursor-pointer border border-border"
+                      style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      SEO Analizi
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

@@ -38,10 +38,6 @@ app.use(securityHeaders);
 app.use('/api/auth', authLimiter);
 app.use('/api', apiLimiter);
 
-// Apply rate limiters
-app.use('/api/auth', authLimiter);
-app.use('/api', apiLimiter);
-
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/sites', sitesRoutes);
