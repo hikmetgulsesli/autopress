@@ -21,6 +21,7 @@ import bulkSeoRoutes from './routes/bulkseo';
 import securityRoutes from './routes/security';
 import bloggerRoutes from './routes/blogger';
 import { startScheduler, getSchedulerStatus } from './services/scheduler.service';
+import healthRoutes from './routes/health';
 
 dotenv.config();
 
@@ -55,16 +56,7 @@ app.use('/api/rss', rssRoutes);
 app.use('/api/bulk-seo', bulkSeoRoutes);
 app.use('/api/security', securityRoutes);
 app.use('/api/blogger', bloggerRoutes);
-
-// Health check
-app.get('/api/health', (_req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(), 
-    version: '1.0.0',
-    scheduler: getSchedulerStatus(),
-  });
-});
+app.use('/api/health', healthRoutes);
 
 // API 404 handler - must be after all API routes
 app.use('/api/*', (_req, res) => {
