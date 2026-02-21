@@ -31,7 +31,7 @@ router.get('/history', async (_req: AuthRequest, res: Response) => {
     const result = await query(
       `SELECT 
         ph.id, ph.article_id, ph.site_id, 
-        ph.wordpress_id, ph.wordpress_url,
+        
         ph.platform, ph.platform_post_id, ph.status, ph.error_message,
         ph.published_at,
         a.title as article_title, 

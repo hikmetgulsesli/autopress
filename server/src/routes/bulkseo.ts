@@ -85,7 +85,7 @@ router.post('/check-links', validateBody(bulkCheckLinksSchema), async (req: Auth
     
     const filters = {
       ...(site_id && { site_id: Number(site_id) }),
-      ...(article_id && { article_id }),
+      ...(article_id && { article_id: Number(article_id) }),
     };
 
     const job = await bulkSeoService.createBulkJob('link_checker', filters);

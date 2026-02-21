@@ -162,13 +162,13 @@ export default function ContentStudio() {
     try {
       if (loadedArticle?.id) {
         await api.put(`/articles/${loadedArticle.id}`, articleData);
-        notify.success('Makale ba\u015Far\u0131yla g\u00FCncellendi');
+        notify.success('Makale başarıyla güncellendi');
       } else {
         await api.post('/articles', articleData);
-        notify.success('Makale ba\u015Far\u0131yla kaydedildi');
+        notify.success('Makale başarıyla kaydedildi');
       }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Bir hata olu\u015Ftu';
+      const errorMessage = err.response?.data?.error || 'Bir hata oluştu';
       notify.error(errorMessage);
     }
   };
@@ -188,7 +188,7 @@ export default function ContentStudio() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 data-testid="loading-spinner" className="w-8 h-8 text-primary-400 animate-spin" />
-          <p className="text-text-muted">Makale y\u00FCkleniyor...</p>
+          <p className="text-text-muted">Makale yükleniyor...</p>
         </div>
       </div>
     );
@@ -203,7 +203,7 @@ export default function ContentStudio() {
             <AlertCircle className="w-6 h-6 text-error" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-text">Y\u00FCkleme Hatas\u0131</h2>
+            <h2 className="text-lg font-semibold text-text">Yükleme Hatası</h2>
             <p className="text-text-muted mt-1">{error}</p>
           </div>
         </div>
@@ -217,9 +217,9 @@ export default function ContentStudio() {
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">
-            {loadedArticle ? 'Makale D\u00FCzenle' : topicParam ? `Makale Olu\u015Ftur: ${topicParam}` : '\u0130\u00E7erik St\u00FCdyosu'}
+            {loadedArticle ? 'Makale Düzenle' : topicParam ? `Makale Oluştur: ${topicParam}` : 'İçerik Stüdyosu'}
           </h1>
-          <p className="text-dark-400 mt-1">AI ile SEO uyumlu i\u00E7erik \u00FCretin</p>
+          <p className="text-dark-400 mt-1">AI ile SEO uyumlu içerik üretin</p>
 
           {/* Site and Language Selection (US-007) */}
           <div className="flex items-center gap-3 mt-4">
@@ -229,14 +229,14 @@ export default function ContentStudio() {
               <select
                 id="site-select"
                 name="site"
-                aria-label="Site se\u00E7in"
+                aria-label="Site seçin"
                 value={selectedSiteId || ''}
                 onChange={(e) => setSelectedSiteId(Number(e.target.value))}
                 disabled={isLoadingSites}
                 className="px-3 py-2 bg-surface-alt border border-border rounded-lg text-text text-sm focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200 cursor-pointer min-w-[180px]"
                 style={{ backgroundColor: 'var(--color-surface-alt)', borderColor: 'var(--color-border)' }}
               >
-                <option value="" disabled>Site se\u00E7in</option>
+                <option value="" disabled>Site seçin</option>
                 {sites.map((site) => (
                   <option key={site.id} value={site.id}>
                     {site.name}
@@ -251,7 +251,7 @@ export default function ContentStudio() {
               <select
                 id="language-select"
                 name="language"
-                aria-label="Dil se\u00E7in"
+                aria-label="Dil seçin"
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
                 className="px-3 py-2 bg-surface-alt border border-border rounded-lg text-text text-sm focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200 cursor-pointer min-w-[120px]"
@@ -285,7 +285,7 @@ export default function ContentStudio() {
             `}
           >
             <Eye className="w-4 h-4" />
-            {isPreview ? 'D\u00FCzenle' : '\u00D6nizleme'}
+            {isPreview ? 'Düzenle' : 'Önizleme'}
           </button>
           <button
             type="button"
@@ -302,7 +302,7 @@ export default function ContentStudio() {
       {isLoading && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 text-primary-400 animate-spin" style={{ color: 'var(--color-primary-400)' }} />
-          <span className="ml-3 text-text-muted">Makale y\u00FCkleniyor...</span>
+          <span className="ml-3 text-text-muted">Makale yükleniyor...</span>
         </div>
       )}
 
@@ -325,14 +325,14 @@ export default function ContentStudio() {
             {/* Title Input */}
           <div className="space-y-2">
             <label htmlFor="article-title" className="block text-sm font-medium text-text">
-              Ba\u015Fl\u0131k
+              Başlık
             </label>
             <input
               id="article-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Makale ba\u015Fl\u0131\u011F\u0131n\u0131 girin..."
+              placeholder="Makale başlığını girin..."
               className="w-full px-4 py-3 bg-surface-alt border border-border rounded-xl text-text text-lg font-medium placeholder:text-text-muted focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400 transition-all duration-200"
             />
           </div>
@@ -340,7 +340,7 @@ export default function ContentStudio() {
           {/* Content Editor */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-text">
-              \u0130\u00E7erik
+              İçerik
             </label>
             {isPreview ? (
               <div
@@ -351,7 +351,7 @@ export default function ContentStudio() {
                 key={articleId}
                 content={content}
                 onChange={setContent}
-                placeholder="Makale i\u00E7eri\u011Fini yazmaya ba\u015Flay\u0131n..."
+                placeholder="Makale içeriğini yazmaya başlayın..."
               />
             )}
           </div>
@@ -373,7 +373,7 @@ export default function ContentStudio() {
               `}
             >
               <ImageIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">G\u00F6rsel</span>
+              <span className="hidden sm:inline">Görsel</span>
             </button>
             <button
               type="button"
@@ -413,7 +413,7 @@ export default function ContentStudio() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <ImageIcon className="w-5 h-5 text-primary-400" style={{ color: 'var(--color-primary-400)' }} />
-                    <h3 className="font-semibold text-text">\u00D6ne \u00C7\u0131kan G\u00F6rsel</h3>
+                    <h3 className="font-semibold text-text">Öne Çıkan Görsel</h3>
                   </div>
                   {featuredImage && (
                     <button
@@ -446,7 +446,7 @@ export default function ContentStudio() {
                     style={{ borderColor: 'var(--color-border)' }}
                   >
                     <ImageIcon className="w-8 h-8" />
-                    <span className="text-sm font-medium">G\u00F6rsel Se\u00E7</span>
+                    <span className="text-sm font-medium">Görsel Seç</span>
                     <span className="text-xs">Unsplash'tan ara</span>
                   </button>
                 )}
@@ -457,7 +457,7 @@ export default function ContentStudio() {
                     style={{ borderColor: 'var(--color-border)' }}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-text">G\u00F6rsel Ara</span>
+                      <span className="text-sm font-medium text-text">Görsel Ara</span>
                       <button
                         onClick={() => setShowImageSearch(false)}
                         className="text-text-muted hover:text-text transition-colors p-1"
@@ -499,7 +499,7 @@ export default function ContentStudio() {
                 <div className="flex-1">
                   <h3 className="font-semibold text-text">AI Asistan</h3>
                   <p className="text-text-muted text-sm mt-1">
-                    Yapay zeka ile i\u00E7erik \u00F6nerileri al\u0131n.
+                    Yapay zeka ile içerik önerileri alın.
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
                     <button
@@ -508,7 +508,7 @@ export default function ContentStudio() {
                       style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
                     >
                       <PenTool className="w-3 h-3" />
-                      Ba\u015Fl\u0131k \u00D6ner
+                      Başlık Öner
                     </button>
                     <button
                       type="button"
