@@ -1,5 +1,9 @@
 import { google, searchconsole_v1, indexing_v3 } from 'googleapis';
+import { query } from '../db/connection';
 import { logger } from '../utils/logger';
+
+// Constants
+const MAX_DAILY_QUOTA = 200;
 
 // Types
 export interface IndexingOptions {
@@ -143,6 +147,7 @@ const handleApiError = (err: unknown, operation: string): never => {
 // Submit URL for indexing using Indexing API
 export const submitUrlForIndexing = async (options: IndexingOptions): Promise<IndexingResult> => {
   const { url, type = 'URL_UPDATED' } = options;
+  const siteUrl = process.env.GOOGLE_SITE_URL || 'default';
 
   // Validate URL
   if (!url || url.trim().length === 0) {
@@ -159,6 +164,9 @@ export const submitUrlForIndexing = async (options: IndexingOptions): Promise<In
     } as SearchConsoleServiceError;
   }
 
+  // Check quota before submitting
+  await enforceQuotaLimit(siteUrl);
+
   try {
     const indexing = await getIndexingClient();
 
@@ -168,6 +176,9 @@ export const submitUrlForIndexing = async (options: IndexingOptions): Promise<In
         type: type,
       },
     });
+
+    // Increment quota on successful submission
+    await incrementQuotaUsage(siteUrl);
 
     logger.info(`URL submitted for indexing: ${url}`, { type });
 
@@ -456,14 +467,102 @@ export const checkServiceHealth = async (): Promise<{
   }
 };
 
-// Get quota information (estimated based on usage patterns)
-export const getQuotaInfo = (): IndexingQuotaInfo => {
-  // The Indexing API has a limit of 200 URL notifications per day per site
-  // This is a simplified implementation - in production, you'd track this in a database
+// ============== Quota Tracking Functions ==============
+
+// Get current quota usage from database
+const getCurrentQuotaUsage = async (siteUrl: string = 'default'): Promise<number> => {
+  const today = new Date().toISOString().split('T')[0];
+  
+  try {
+    const result = await query(
+      'SELECT submissions_count FROM indexing_quota WHERE site_url = $1 AND submissions_date = $2',
+      [siteUrl, today]
+    );
+    
+    if (result.rows.length > 0) {
+      return result.rows[0].submissions_count;
+    }
+    return 0;
+  } catch (err) {
+    logger.error('Error getting quota usage:', err);
+    return 0;
+  }
+};
+
+// Increment quota usage in database
+const incrementQuotaUsage = async (siteUrl: string = 'default'): Promise<void> => {
+  const today = new Date().toISOString().split('T')[0];
+  
+  try {
+    // Use upsert to handle both insert and update
+    await query(
+      `INSERT INTO indexing_quota (site_url, submissions_date, submissions_count, created_at, updated_at)
+       VALUES ($1, $2, 1, NOW(), NOW())
+       ON CONFLICT (site_url, submissions_date)
+       DO UPDATE SET 
+         submissions_count = indexing_quota.submissions_count + 1,
+         updated_at = NOW()`,
+      [siteUrl, today]
+    );
+  } catch (err) {
+    logger.error('Error incrementing quota:', err);
+  }
+};
+
+// Check if quota is available
+const checkQuotaAvailable = async (siteUrl: string = 'default'): Promise<boolean> => {
+  const usedQuota = await getCurrentQuotaUsage(siteUrl);
+  return usedQuota < MAX_DAILY_QUOTA;
+};
+
+// Get quota information from database
+export const getQuotaInfo = async (): Promise<IndexingQuotaInfo> => {
+  const siteUrl = process.env.GOOGLE_SITE_URL || 'default';
+  const usedQuota = await getCurrentQuotaUsage(siteUrl);
+  
+  // Calculate reset time (midnight tonight)
+  const now = new Date();
+  const resetTime = new Date(now);
+  resetTime.setDate(resetTime.getDate() + 1);
+  resetTime.setHours(0, 0, 0, 0);
+  
   return {
-    dailyQuota: 200,
-    usedQuota: 0, // Would be tracked in DB
-    remainingQuota: 200,
-    resetTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    dailyQuota: MAX_DAILY_QUOTA,
+    usedQuota,
+    remainingQuota: MAX_DAILY_QUOTA - usedQuota,
+    resetTime,
   };
+};
+
+// Get quota info synchronously (for cases where async is not possible)
+export const getQuotaInfoSync = (usedQuota: number): IndexingQuotaInfo => {
+  // Calculate reset time (midnight tonight)
+  const now = new Date();
+  const resetTime = new Date(now);
+  resetTime.setDate(resetTime.getDate() + 1);
+  resetTime.setHours(0, 0, 0, 0);
+  
+  return {
+    dailyQuota: MAX_DAILY_QUOTA,
+    usedQuota,
+    remainingQuota: MAX_DAILY_QUOTA - usedQuota,
+    resetTime,
+  };
+};
+
+// Enforce quota check before submitting
+const enforceQuotaLimit = async (siteUrl: string = 'default'): Promise<void> => {
+  const available = await checkQuotaAvailable(siteUrl);
+  if (!available) {
+    const usedQuota = await getCurrentQuotaUsage(siteUrl);
+    throw {
+      code: 'QUOTA_EXCEEDED',
+      message: `Google Indexing API quota exceeded. Daily limit is ${MAX_DAILY_QUOTA} URL notifications per site. Used: ${usedQuota}/${MAX_DAILY_QUOTA}`,
+      details: { 
+        usedQuota, 
+        dailyQuota: MAX_DAILY_QUOTA,
+        resetTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() 
+      },
+    } as SearchConsoleServiceError;
+  }
 };

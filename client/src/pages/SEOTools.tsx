@@ -61,6 +61,16 @@ interface LinkSuggestion {
   context_snippet?: string;
 }
 
+const inputClassName = "w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2";
+const inputStyle = {
+  backgroundColor: 'var(--color-surface-alt)',
+  border: '1px solid var(--color-border)',
+  color: 'var(--color-text)'
+};
+const inputFocusStyle = {
+  boxShadow: '0 0 0 2px rgba(251, 191, 36, 0.5)'
+};
+
 export default function SEOTools() {
   const [activeTab, setActiveTab] = useState<'analysis' | 'links' | 'suggestions' | 'jobs'>('analysis');
   const [jobs, setJobs] = useState<BulkJob[]>([]);
@@ -210,15 +220,15 @@ export default function SEOTools() {
   const getJobStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="w-5 h-5 text-emerald-500" />;
+        return <CheckCircle className="w-5 h-5" style={{ color: 'var(--color-success)' }} />;
       case 'running':
-        return <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />;
+        return <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--color-warning)' }} />;
       case 'failed':
-        return <XCircle className="w-5 h-5 text-red-500" />;
+        return <XCircle className="w-5 h-5" style={{ color: 'var(--color-error)' }} />;
       case 'pending':
-        return <RefreshCw className="w-5 h-5 text-slate-400" />;
+        return <RefreshCw className="w-5 h-5" style={{ color: 'var(--color-text-subtle)' }} />;
       default:
-        return <AlertCircle className="w-5 h-5 text-slate-400" />;
+        return <AlertCircle className="w-5 h-5" style={{ color: 'var(--color-text-subtle)' }} />;
     }
   };
 
@@ -238,17 +248,23 @@ export default function SEOTools() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">SEO Araçları</h1>
-        <p className="text-dark-400 mt-1">Makalelerinizin SEO performansını analiz edin ve linkleri kontrol edin</p>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>SEO Araçları</h1>
+        <p className="mt-1" style={{ color: 'var(--color-text-muted)' }}>Makalelerinizin SEO performansını analiz edin ve linkleri kontrol edin</p>
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400" />
-          <p className="text-red-400 text-sm">{error}</p>
+        <div 
+          className="rounded-lg p-4 flex items-center gap-3"
+          style={{ backgroundColor: 'rgba(248, 113, 113, 0.1)', border: '1px solid rgba(248, 113, 113, 0.3)' }}
+        >
+          <AlertCircle className="w-5 h-5" style={{ color: 'var(--color-error)' }} />
+          <p className="text-sm" style={{ color: 'var(--color-error)' }}>{error}</p>
           <button 
             onClick={() => setError('')} 
-            className="ml-auto text-red-400 hover:text-red-300"
+            className="ml-auto transition-colors"
+            style={{ color: 'var(--color-error)' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-text)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-error)'}
           >
             <XCircle className="w-4 h-4" />
           </button>
@@ -256,7 +272,7 @@ export default function SEOTools() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-dark-700">
+      <div className="flex gap-2" style={{ borderBottom: '1px solid var(--color-border)' }}>
         {[
           { id: 'analysis', label: 'Toplu Analiz', icon: BarChart3 },
           { id: 'links', label: 'Kırık Linkler', icon: LinkIcon },
@@ -266,11 +282,17 @@ export default function SEOTools() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? 'border-amber-500 text-amber-400'
-                : 'border-transparent text-dark-400 hover:text-dark-200'
-            }`}
+            className="flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors"
+            style={{
+              borderColor: activeTab === tab.id ? 'var(--color-warning)' : 'transparent',
+              color: activeTab === tab.id ? 'var(--color-warning)' : 'var(--color-text-muted)'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== tab.id) e.currentTarget.style.color = 'var(--color-text)';
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== tab.id) e.currentTarget.style.color = 'var(--color-text-muted)';
+            }}
           >
             <tab.icon className="w-4 h-4" />
             {tab.label}
@@ -281,29 +303,36 @@ export default function SEOTools() {
       {/* Analysis Tab */}
       {activeTab === 'analysis' && (
         <div className="space-y-6">
-          <div className="bg-dark-900 border border-dark-700 rounded-xl p-6">
-            <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-amber-400" />
+          <div 
+            className="rounded-xl p-6"
+            style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+          >
+            <h3 className="text-lg font-medium mb-4 flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+              <BarChart3 className="w-5 h-5" style={{ color: 'var(--color-warning)' }} />
               Toplu SEO Analizi
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">Site</label>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-muted)' }}>Site</label>
                 <input
                   type="text"
                   value={filters.site_id}
                   onChange={(e) => setFilters({ ...filters, site_id: e.target.value })}
                   placeholder="Site ID"
-                  className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                  className={inputClassName}
+                  style={inputStyle}
+                  onFocus={(e) => Object.assign(e.currentTarget.style, inputFocusStyle)}
+                  onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">Durum</label>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-muted)' }}>Durum</label>
                 <select
                   value={filters.status}
                   onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                  className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                  className={inputClassName}
+                  style={inputStyle}
                 >
                   <option value="">Tümü</option>
                   <option value="draft">Taslak</option>
@@ -312,11 +341,12 @@ export default function SEOTools() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">Dil</label>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-muted)' }}>Dil</label>
                 <select
                   value={filters.language}
                   onChange={(e) => setFilters({ ...filters, language: e.target.value })}
-                  className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                  className={inputClassName}
+                  style={inputStyle}
                 >
                   <option value="">Tümü</option>
                   <option value="tr">Türkçe</option>
@@ -330,7 +360,10 @@ export default function SEOTools() {
               <button
                 onClick={startSEOAnalysis}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                style={{ backgroundColor: 'var(--color-warning)', color: 'var(--color-surface)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-warning)'}
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                 Analiz Başlat
@@ -339,7 +372,10 @@ export default function SEOTools() {
               <button
                 onClick={startLinkChecker}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-dark-700 hover:bg-dark-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                style={{ backgroundColor: 'var(--color-surface-alt)', color: 'var(--color-text)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-border)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-surface-alt)'}
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LinkIcon className="w-4 h-4" />}
                 Link Kontrolü
@@ -348,7 +384,10 @@ export default function SEOTools() {
               <button
                 onClick={startLinkSuggestions}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-dark-700 hover:bg-dark-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                style={{ backgroundColor: 'var(--color-surface-alt)', color: 'var(--color-text)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-border)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-surface-alt)'}
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
                 Link Önerileri
@@ -356,20 +395,26 @@ export default function SEOTools() {
             </div>
           </div>
 
-          <div className="bg-dark-900 border border-dark-700 rounded-xl p-6">
-            <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-              <Download className="w-5 h-5 text-amber-400" />
+          <div 
+            className="rounded-xl p-6"
+            style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+          >
+            <h3 className="text-lg font-medium mb-4 flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+              <Download className="w-5 h-5" style={{ color: 'var(--color-warning)' }} />
               Rapor İndir
             </h3>
             
-            <p className="text-dark-400 text-sm mb-4">
+            <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
               Tüm makalelerin SEO analiz raporunu JSON veya CSV formatında indirin.
             </p>
             
             <div className="flex gap-3">
               <button
                 onClick={() => exportReport('json')}
-                className="flex items-center gap-2 px-4 py-2 bg-dark-700 hover:bg-dark-600 text-white rounded-lg font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
+                style={{ backgroundColor: 'var(--color-surface-alt)', color: 'var(--color-text)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-border)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-surface-alt)'}
               >
                 <FileText className="w-4 h-4" />
                 JSON İndir
@@ -377,7 +422,10 @@ export default function SEOTools() {
               
               <button
                 onClick={() => exportReport('csv')}
-                className="flex items-center gap-2 px-4 py-2 bg-dark-700 hover:bg-dark-600 text-white rounded-lg font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
+                style={{ backgroundColor: 'var(--color-surface-alt)', color: 'var(--color-text)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-border)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-surface-alt)'}
               >
                 <Download className="w-4 h-4" />
                 CSV İndir
@@ -389,85 +437,107 @@ export default function SEOTools() {
 
       {/* Broken Links Tab */}
       {activeTab === 'links' && (
-        <div className="bg-dark-900 border border-dark-700 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-dark-700 flex items-center justify-between">
-            <h3 className="text-lg font-medium text-white flex items-center gap-2">
-              <LinkIcon className="w-5 h-5 text-red-400" />
+        <div 
+          className="rounded-xl overflow-hidden"
+          style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+        >
+          <div 
+            className="p-4 flex items-center justify-between"
+            style={{ borderBottom: '1px solid var(--color-border)' }}
+          >
+            <h3 className="text-lg font-medium flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+              <LinkIcon className="w-5 h-5" style={{ color: 'var(--color-error)' }} />
               Kırık Linkler
-              <span className="ml-2 px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded-full">
+              <span 
+                className="ml-2 px-2 py-0.5 text-xs rounded-full"
+                style={{ backgroundColor: 'rgba(248, 113, 113, 0.2)', color: 'var(--color-error)' }}
+              >
                 {brokenLinks.length}
               </span>
             </h3>
             <button
               onClick={fetchBrokenLinks}
-              className="p-2 hover:bg-dark-700 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors cursor-pointer"
+              style={{ color: 'var(--color-text-muted)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-surface-alt)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
-              <RefreshCw className="w-4 h-4 text-dark-400" />
+              <RefreshCw className="w-4 h-4" />
             </button>
           </div>
           
           {loading ? (
             <div className="p-12 text-center">
-              <Loader2 className="w-8 h-8 text-amber-500 animate-spin mx-auto mb-4" />
-              <p className="text-dark-400">Yükleniyor...</p>
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: 'var(--color-warning)' }} />
+              <p style={{ color: 'var(--color-text-muted)' }}>Yükleniyor...</p>
             </div>
           ) : brokenLinks.length === 0 ? (
             <div className="p-12 text-center">
-              <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
-              <p className="text-dark-300 font-medium">Kırık link bulunamadı!</p>
-              <p className="text-dark-500 text-sm mt-1">Tüm linkler çalışıyor gibi görünüyor.</p>
+              <CheckCircle className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--color-success)' }} />
+              <p className="font-medium" style={{ color: 'var(--color-text-muted)' }}>Kırık link bulunamadı!</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--color-text-subtle)' }}>Tüm linkler çalışıyor gibi görünüyor.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-dark-800">
+                <thead style={{ backgroundColor: 'var(--color-surface-alt)' }}>
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Makale</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Link</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Tip</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Durum</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Kontrol</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Makale</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Link</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Tip</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Durum</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase" style={{ color: 'var(--color-text-muted)' }}>Kontrol</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-dark-700">
+                <tbody style={{ borderTop: '1px solid var(--color-border)' }}>
                   {brokenLinks.map((link) => (
-                    <tr key={link.id} className="hover:bg-dark-800/50">
+                    <tr 
+                      key={link.id} 
+                      className="transition-colors"
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(63, 63, 70, 0.5)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
                       <td className="px-4 py-3">
-                        <span className="text-white text-sm">{link.article_title}</span>
+                        <span className="text-sm" style={{ color: 'var(--color-text)' }}>{link.article_title}</span>
                       </td>
                       <td className="px-4 py-3">
                         <a
                           href={link.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-amber-400 hover:text-amber-300 text-sm flex items-center gap-1"
+                          className="text-sm flex items-center gap-1 transition-colors"
+                          style={{ color: 'var(--color-warning)' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#f59e0b'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-warning)'}
                         >
                           {link.url.substring(0, 50)}
                           {link.url.length > 50 && '...'}
                           <ExternalLink className="w-3 h-3" />
                         </a>
                         {link.anchor_text && (
-                          <p className="text-dark-500 text-xs mt-1">"{link.anchor_text}"</p>
+                          <p className="text-xs mt-1" style={{ color: 'var(--color-text-subtle)' }}>"{link.anchor_text}"</p>
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          link.link_type === 'internal'
-                            ? 'bg-blue-500/20 text-blue-400'
-                            : 'bg-purple-500/20 text-purple-400'
-                        }`}>
+                        <span 
+                          className="px-2 py-1 text-xs rounded-full"
+                          style={link.link_type === 'internal'
+                            ? { backgroundColor: 'rgba(96, 165, 250, 0.2)', color: '#60a5fa' }
+                            : { backgroundColor: 'rgba(192, 132, 252, 0.2)', color: '#c084fc' }
+                          }
+                        >
                           {link.link_type === 'internal' ? 'İç' : 'Dış'}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-red-400 text-sm">
+                        <span className="text-sm" style={{ color: 'var(--color-error)' }}>
                           {link.status_code || 'Hata'}
                         </span>
                         {link.error_message && (
-                          <p className="text-dark-500 text-xs">{link.error_message}</p>
+                          <p className="text-xs" style={{ color: 'var(--color-text-subtle)' }}>{link.error_message}</p>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-dark-400 text-sm">
+                      <td className="px-4 py-3 text-sm" style={{ color: 'var(--color-text-muted)' }}>
                         {new Date(link.last_checked).toLocaleDateString('tr-TR')}
                       </td>
                     </tr>
@@ -481,74 +551,104 @@ export default function SEOTools() {
 
       {/* Suggestions Tab */}
       {activeTab === 'suggestions' && (
-        <div className="bg-dark-900 border border-dark-700 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-dark-700 flex items-center justify-between">
-            <h3 className="text-lg font-medium text-white flex items-center gap-2">
-              <Lightbulb className="w-5 h-5 text-amber-400" />
+        <div 
+          className="rounded-xl overflow-hidden"
+          style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+        >
+          <div 
+            className="p-4 flex items-center justify-between"
+            style={{ borderBottom: '1px solid var(--color-border)' }}
+          >
+            <h3 className="text-lg font-medium flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+              <Lightbulb className="w-5 h-5" style={{ color: 'var(--color-warning)' }} />
               İç Link Önerileri
-              <span className="ml-2 px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded-full">
+              <span 
+                className="ml-2 px-2 py-0.5 text-xs rounded-full"
+                style={{ backgroundColor: 'rgba(251, 191, 36, 0.2)', color: 'var(--color-warning)' }}
+              >
                 {suggestions.length}
               </span>
             </h3>
             <button
               onClick={fetchSuggestions}
-              className="p-2 hover:bg-dark-700 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors cursor-pointer"
+              style={{ color: 'var(--color-text-muted)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-surface-alt)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
-              <RefreshCw className="w-4 h-4 text-dark-400" />
+              <RefreshCw className="w-4 h-4" />
             </button>
           </div>
           
           {loading ? (
             <div className="p-12 text-center">
-              <Loader2 className="w-8 h-8 text-amber-500 animate-spin mx-auto mb-4" />
-              <p className="text-dark-400">Yükleniyor...</p>
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: 'var(--color-warning)' }} />
+              <p style={{ color: 'var(--color-text-muted)' }}>Yükleniyor...</p>
             </div>
           ) : suggestions.length === 0 ? (
             <div className="p-12 text-center">
-              <Search className="w-12 h-12 text-dark-500 mx-auto mb-4" />
-              <p className="text-dark-300 font-medium">Öneri bulunamadı</p>
-              <p className="text-dark-500 text-sm mt-1">Link önerileri oluşturmak için "Link Önerileri" butonunu kullanın.</p>
+              <Search className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--color-text-subtle)' }} />
+              <p className="font-medium" style={{ color: 'var(--color-text-muted)' }}>Öneri bulunamadı</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--color-text-subtle)' }}>Link önerileri oluşturmak için "Link Önerileri" butonunu kullanın.</p>
             </div>
           ) : (
-            <div className="divide-y divide-dark-700">
+            <div style={{ borderTop: '1px solid var(--color-border)' }}>
               {suggestions.map((suggestion) => (
-                <div key={suggestion.id} className="p-4 hover:bg-dark-800/50">
+                <div 
+                  key={suggestion.id} 
+                  className="p-4 transition-colors"
+                  style={{ borderBottom: '1px solid var(--color-border)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(63, 63, 70, 0.5)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-white font-medium">{suggestion.source_title}</span>
-                        <span className="text-dark-500">→</span>
-                        <span className="text-amber-400">{suggestion.target_title}</span>
+                        <span style={{ color: 'var(--color-text)' }} className="font-medium">{suggestion.source_title}</span>
+                        <span style={{ color: 'var(--color-text-subtle)' }}>→</span>
+                        <span style={{ color: 'var(--color-warning)' }}>{suggestion.target_title}</span>
                       </div>
                       
                       {suggestion.context_snippet && (
-                        <p className="text-dark-400 text-sm bg-dark-800 p-2 rounded">
+                        <p 
+                          className="text-sm p-2 rounded"
+                          style={{ color: 'var(--color-text-muted)', backgroundColor: 'var(--color-surface-alt)' }}
+                        >
                           ...{suggestion.context_snippet}...
                         </p>
                       )}
                       
                       <div className="flex items-center gap-4 mt-2">
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-dark-500">Önerilen metin:</span>
-                          <span className="text-xs text-dark-300">"{suggestion.suggested_anchor_text}"</span>
+                          <span className="text-xs" style={{ color: 'var(--color-text-subtle)' }}>Önerilen metin:</span>
+                          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>"{suggestion.suggested_anchor_text}"</span>
                         </div>
                         
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-dark-500">Relevans:</span>
-                          <div className="w-16 h-1.5 bg-dark-700 rounded-full overflow-hidden">
+                          <span className="text-xs" style={{ color: 'var(--color-text-subtle)' }}>Relevans:</span>
+                          <div 
+                            className="w-16 h-1.5 rounded-full overflow-hidden"
+                            style={{ backgroundColor: 'var(--color-border)' }}
+                          >
                             <div
-                              className="h-full bg-amber-500 rounded-full"
-                              style={{ width: `${suggestion.relevance_score}%` }}
+                              className="h-full rounded-full"
+                              style={{ 
+                                width: `${suggestion.relevance_score}%`,
+                                backgroundColor: 'var(--color-warning)'
+                              }}
                             />
                           </div>
-                          <span className="text-xs text-dark-400">{suggestion.relevance_score}%</span>
+                          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{suggestion.relevance_score}%</span>
                         </div>
                       </div>
                     </div>
                     
                     <button
                       onClick={() => applySuggestion(suggestion.id)}
-                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm rounded-lg transition-colors"
+                      className="px-3 py-1.5 text-sm rounded-lg transition-colors cursor-pointer"
+                      style={{ backgroundColor: 'var(--color-warning)', color: 'var(--color-surface)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-warning)'}
                     >
                       Uygula
                     </button>
@@ -562,42 +662,60 @@ export default function SEOTools() {
 
       {/* Jobs Tab */}
       {activeTab === 'jobs' && (
-        <div className="bg-dark-900 border border-dark-700 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-dark-700 flex items-center justify-between">
-            <h3 className="text-lg font-medium text-white flex items-center gap-2">
-              <RefreshCw className="w-5 h-5 text-amber-400" />
+        <div 
+          className="rounded-xl overflow-hidden"
+          style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+        >
+          <div 
+            className="p-4 flex items-center justify-between"
+            style={{ borderBottom: '1px solid var(--color-border)' }}
+          >
+            <h3 className="text-lg font-medium flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+              <RefreshCw className="w-5 h-5" style={{ color: 'var(--color-warning)' }} />
               İşlem Geçmişi
             </h3>
             <button
               onClick={fetchJobs}
-              className="p-2 hover:bg-dark-700 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors cursor-pointer"
+              style={{ color: 'var(--color-text-muted)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-surface-alt)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
-              <RefreshCw className="w-4 h-4 text-dark-400" />
+              <RefreshCw className="w-4 h-4" />
             </button>
           </div>
           
           {jobs.length === 0 ? (
             <div className="p-12 text-center">
-              <Search className="w-12 h-12 text-dark-500 mx-auto mb-4" />
-              <p className="text-dark-300 font-medium">Henüz işlem yapılmamış</p>
-              <p className="text-dark-500 text-sm mt-1">SEO analizi veya link kontrolü başlatmak için Toplu Analiz sekmesine gidin.</p>
+              <Search className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--color-text-subtle)' }} />
+              <p className="font-medium" style={{ color: 'var(--color-text-muted)' }}>Henüz işlem yapılmamış</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--color-text-subtle)' }}>SEO analizi veya link kontrolü başlatmak için Toplu Analiz sekmesine gidin.</p>
             </div>
           ) : (
-            <div className="divide-y divide-dark-700">
+            <div style={{ borderTop: '1px solid var(--color-border)' }}>
               {jobs.map((job) => (
-                <div key={job.id} className="p-4 hover:bg-dark-800/50">
+                <div 
+                  key={job.id} 
+                  className="p-4 transition-colors"
+                  style={{ borderBottom: '1px solid var(--color-border)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(63, 63, 70, 0.5)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
                   <div className="flex items-start gap-4">
                     <div className="mt-1">{getJobStatusIcon(job.status)}</div>
                     
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-white font-medium">{getJobTypeLabel(job.job_type)}</span>
-                        <span className={`px-2 py-0.5 text-xs rounded-full ${
-                          job.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
-                          job.status === 'running' ? 'bg-amber-500/20 text-amber-400' :
-                          job.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                          'bg-dark-700 text-dark-400'
-                        }`}>
+                        <span style={{ color: 'var(--color-text)' }} className="font-medium">{getJobTypeLabel(job.job_type)}</span>
+                        <span 
+                          className="px-2 py-0.5 text-xs rounded-full"
+                          style={
+                            job.status === 'completed' ? { backgroundColor: 'rgba(74, 222, 128, 0.2)', color: 'var(--color-success)' } :
+                            job.status === 'running' ? { backgroundColor: 'rgba(251, 191, 36, 0.2)', color: 'var(--color-warning)' } :
+                            job.status === 'failed' ? { backgroundColor: 'rgba(248, 113, 113, 0.2)', color: 'var(--color-error)' } :
+                            { backgroundColor: 'var(--color-surface-alt)', color: 'var(--color-text-muted)' }
+                          }
+                        >
                           {job.status === 'completed' ? 'Tamamlandı' :
                            job.status === 'running' ? 'Çalışıyor' :
                            job.status === 'failed' ? 'Başarısız' :
@@ -605,20 +723,26 @@ export default function SEOTools() {
                         </span>
                       </div>
                       
-                      <div className="text-dark-400 text-sm mb-2">
+                      <div className="text-sm mb-2" style={{ color: 'var(--color-text-muted)' }}>
                         {new Date(job.created_at).toLocaleString('tr-TR')}
                       </div>
                       
                       {job.status === 'running' && job.total_items > 0 && (
                         <div className="mb-2">
-                          <div className="flex justify-between text-xs text-dark-400 mb-1">
+                          <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>
                             <span>İlerleme</span>
                             <span>{job.processed_items} / {job.total_items}</span>
                           </div>
-                          <div className="w-full h-2 bg-dark-700 rounded-full overflow-hidden">
+                          <div 
+                            className="w-full h-2 rounded-full overflow-hidden"
+                            style={{ backgroundColor: 'var(--color-border)' }}
+                          >
                             <div
-                              className="h-full bg-amber-500 rounded-full transition-all"
-                              style={{ width: `${(job.processed_items / job.total_items) * 100}%` }}
+                              className="h-full rounded-full transition-all"
+                              style={{ 
+                                width: `${(job.processed_items / job.total_items) * 100}%`,
+                                backgroundColor: 'var(--color-warning)'
+                              }}
                             />
                           </div>
                         </div>
@@ -627,33 +751,33 @@ export default function SEOTools() {
                       {job.results?.summary && (
                         <div className="flex flex-wrap gap-4 text-sm">
                           {job.results.summary.total_analyzed !== undefined && (
-                            <span className="text-dark-400">
-                              <span className="text-white">{job.results.summary.total_analyzed}</span> analiz
+                            <span style={{ color: 'var(--color-text-muted)' }}>
+                              <span style={{ color: 'var(--color-text)' }}>{job.results.summary.total_analyzed}</span> analiz
                             </span>
                           )}
                           {job.results.summary.error_count !== undefined && (
-                            <span className="text-dark-400">
-                              <span className="text-red-400">{job.results.summary.error_count}</span> hata
+                            <span style={{ color: 'var(--color-text-muted)' }}>
+                              <span style={{ color: 'var(--color-error)' }}>{job.results.summary.error_count}</span> hata
                             </span>
                           )}
                           {job.results.summary.warning_count !== undefined && (
-                            <span className="text-dark-400">
-                              <span className="text-amber-400">{job.results.summary.warning_count}</span> uyarı
+                            <span style={{ color: 'var(--color-text-muted)' }}>
+                              <span style={{ color: 'var(--color-warning)' }}>{job.results.summary.warning_count}</span> uyarı
                             </span>
                           )}
                           {job.results.summary.avg_seo_score !== undefined && (
-                            <span className="text-dark-400">
-                              Ortalama SEO: <span className="text-white">{job.results.summary.avg_seo_score}</span>
+                            <span style={{ color: 'var(--color-text-muted)' }}>
+                              Ortalama SEO: <span style={{ color: 'var(--color-text)' }}>{job.results.summary.avg_seo_score}</span>
                             </span>
                           )}
                           {job.results.summary.broken_links_found !== undefined && (
-                            <span className="text-dark-400">
-                              <span className="text-red-400">{job.results.summary.broken_links_found}</span> kırık link
+                            <span style={{ color: 'var(--color-text-muted)' }}>
+                              <span style={{ color: 'var(--color-error)' }}>{job.results.summary.broken_links_found}</span> kırık link
                             </span>
                           )}
                           {job.results.summary.suggestions_created !== undefined && (
-                            <span className="text-dark-400">
-                              <span className="text-emerald-400">{job.results.summary.suggestions_created}</span> öneri
+                            <span style={{ color: 'var(--color-text-muted)' }}>
+                              <span style={{ color: 'var(--color-success)' }}>{job.results.summary.suggestions_created}</span> öneri
                             </span>
                           )}
                         </div>
