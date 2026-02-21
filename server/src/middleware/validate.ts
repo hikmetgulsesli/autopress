@@ -95,7 +95,8 @@ export function validateQuery<T extends ZodSchema>(schema: T) {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       const result = schema.parse(req.query);
-      req.query = result as any;
+      // Store validated query in a custom property
+      (req as any).validatedQuery = result;
       next();
     } catch (error) {
       if (error instanceof ZodError) {

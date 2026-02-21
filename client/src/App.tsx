@@ -11,6 +11,7 @@ import TrendExplorer from './pages/TrendExplorer';
 import SEOTools from './pages/SEOTools';
 import Settings from './pages/Settings';
 import SecurityDashboard from './pages/SecurityDashboard';
+import NotFound from './pages/NotFound';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -61,6 +62,7 @@ export default function App() {
                 <Route path="/seo" element={<SEOTools />} />
                 <Route path="/security" element={<SecurityDashboard />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </Layout>
           ) : (

@@ -187,8 +187,19 @@ export const getArticlesForAnalysis = async (
   return result.rows;
 };
 
+// Update article SEO score in database
+export const updateArticleSEOScore = async (
+  articleId: number,
+  seoScore: number
+): Promise<void> => {
+  await query(
+    'UPDATE articles SET seo_score = $1 WHERE id = $2',
+    [seoScore, articleId]
+  );
+};
+
 // Analyze single article for SEO issues
-export const analyzeArticleSEO = (article: {
+export const analyzeArticleSEO = async (article: {
   id: number;
   title: string;
   slug: string;
@@ -197,7 +208,7 @@ export const analyzeArticleSEO = (article: {
   meta_description?: string;
   seo_score: number;
   word_count: number;
-}): SEOAnalysisResult => {
+}): Promise<SEOAnalysisResult> => {
   const issues: SEOIssue[] = [];
 
   // Title checks
@@ -292,11 +303,28 @@ export const analyzeArticleSEO = (article: {
     });
   }
 
+  // Calculate SEO score based on issues
+  let calculatedScore = 100;
+  
+  // Deduct points for errors (10 points each)
+  const errorCount = issues.filter(i => i.type === 'error').length;
+  calculatedScore -= errorCount * 10;
+  
+  // Deduct points for warnings (5 points each)
+  const warningCount = issues.filter(i => i.type === 'warning').length;
+  calculatedScore -= warningCount * 5;
+  
+  // Ensure score is between 0 and 100
+  calculatedScore = Math.max(0, Math.min(100, calculatedScore));
+
+  // Save the calculated SEO score to the database
+  await updateArticleSEOScore(article.id, calculatedScore);
+
   return {
     article_id: article.id,
     title: article.title,
     slug: article.slug,
-    seo_score: article.seo_score,
+    seo_score: calculatedScore,
     word_count: article.word_count,
     meta_title: article.meta_title,
     meta_description: article.meta_description,

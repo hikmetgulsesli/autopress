@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   analyzeArticleSEO,
+  updateArticleSEOScore,
   extractLinks,
   createBulkJob,
   getBulkJob,
@@ -31,8 +32,25 @@ describe('BulkSEOService', () => {
     vi.clearAllMocks();
   });
 
+  describe('updateArticleSEOScore', () => {
+    it('should update article SEO score in database', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+
+      await updateArticleSEOScore(1, 85);
+
+      expect(mockedQuery).toHaveBeenCalledWith(
+        'UPDATE articles SET seo_score = $1 WHERE id = $2',
+        [85, 1]
+      );
+    });
+  });
+
   describe('analyzeArticleSEO', () => {
-    it('should detect missing meta description', () => {
+    beforeEach(() => {
+      mockedQuery.mockResolvedValue({ rows: [], rowCount: 1 } as any);
+    });
+
+    it('should detect missing meta description', async () => {
       const article = {
         id: 1,
         title: 'Test Article Title',
@@ -44,7 +62,7 @@ describe('BulkSEOService', () => {
         word_count: 500,
       };
 
-      const result = analyzeArticleSEO(article);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({
@@ -55,7 +73,7 @@ describe('BulkSEOService', () => {
       );
     });
 
-    it('should detect short title', () => {
+    it('should detect short title', async () => {
       const article = {
         id: 1,
         title: 'Short',
@@ -67,7 +85,7 @@ describe('BulkSEOService', () => {
         word_count: 500,
       };
 
-      const result = analyzeArticleSEO(article);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({
@@ -78,7 +96,7 @@ describe('BulkSEOService', () => {
       );
     });
 
-    it('should detect missing H1 heading', () => {
+    it('should detect missing H1 heading', async () => {
       const article = {
         id: 1,
         title: 'Test Article Title That Is Long Enough',
@@ -90,7 +108,7 @@ describe('BulkSEOService', () => {
         word_count: 500,
       };
 
-      const result = analyzeArticleSEO(article);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({
@@ -101,7 +119,7 @@ describe('BulkSEOService', () => {
       );
     });
 
-    it('should detect short content', () => {
+    it('should detect short content', async () => {
       const article = {
         id: 1,
         title: 'Test Article Title That Is Long Enough',
@@ -113,7 +131,7 @@ describe('BulkSEOService', () => {
         word_count: 100,
       };
 
-      const result = analyzeArticleSEO(article);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({
@@ -124,7 +142,7 @@ describe('BulkSEOService', () => {
       );
     });
 
-    it('should pass for well-optimized article', () => {
+    it('should pass for well-optimized article', async () => {
       const article = {
         id: 1,
         title: 'Complete Guide to SEO Best Practices',
@@ -136,9 +154,89 @@ describe('BulkSEOService', () => {
         word_count: 1000,
       };
 
-      const result = analyzeArticleSEO(article);
+      const result = await analyzeArticleSEO(article);
 
       expect(result.issues.filter(i => i.type === 'error')).toHaveLength(0);
+    });
+
+    it('should save calculated SEO score to database', async () => {
+      const article = {
+        id: 1,
+        title: 'Complete Guide to SEO Best Practices',
+        slug: 'seo-best-practices',
+        content: '<h1>Complete Guide to SEO</h1><h2>Introduction</h2><p>' + 'word '.repeat(400) + '</p>',
+        meta_title: 'Complete Guide to SEO Best Practices',
+        meta_description: 'Learn the best SEO practices for 2024. This comprehensive guide covers everything you need to know.',
+        seo_score: 50,
+        word_count: 1000,
+      };
+
+      await analyzeArticleSEO(article);
+
+      expect(mockedQuery).toHaveBeenCalledWith(
+        'UPDATE articles SET seo_score = $1 WHERE id = $2',
+        expect.any(Array)
+      );
+    });
+
+    it('should calculate high SEO score for well-optimized article', async () => {
+      const article = {
+        id: 1,
+        title: 'Complete Guide to SEO Best Practices',
+        slug: 'seo-best-practices',
+        content: '<h1>Complete Guide to SEO</h1><h2>Introduction</h2><p>' + 'word '.repeat(400) + '</p>',
+        meta_title: 'Complete Guide to SEO Best Practices',
+        meta_description: 'Learn the best SEO practices for 2024. This comprehensive guide covers everything you need to know.',
+        seo_score: 50,
+        word_count: 1000,
+      };
+
+      const result = await analyzeArticleSEO(article);
+
+      expect(result.seo_score).toBeGreaterThanOrEqual(90);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        'UPDATE articles SET seo_score = $1 WHERE id = $2',
+        [result.seo_score, 1]
+      );
+    });
+
+    it('should calculate low SEO score for poorly optimized article', async () => {
+      const article = {
+        id: 2,
+        title: 'Short',
+        slug: '',
+        content: '<p>Content without heading and very short</p>',
+        meta_title: 'Short',
+        meta_description: '',
+        seo_score: 50,
+        word_count: 100,
+      };
+
+      const result = await analyzeArticleSEO(article);
+
+      expect(result.seo_score).toBeLessThan(70);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        'UPDATE articles SET seo_score = $1 WHERE id = $2',
+        [result.seo_score, 2]
+      );
+    });
+
+    it('should ensure SEO score is between 0 and 100', async () => {
+      const article = {
+        id: 3,
+        title: '',
+        slug: '',
+        content: '',
+        meta_title: '',
+        meta_description: '',
+        seo_score: 50,
+        word_count: 0,
+      };
+
+      const result = await analyzeArticleSEO(article);
+
+      expect(result.seo_score).toBeGreaterThanOrEqual(0);
+      expect(result.seo_score).toBeLessThanOrEqual(100);
     });
   });
 

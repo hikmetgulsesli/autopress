@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PenTool, Sparkles, Save, Eye, Image as ImageIcon, X, Loader2, AlertCircle } from 'lucide-react';
 import { TipTapEditor } from '../components/TipTapEditor';
 import ImageSearch from '../components/ImageSearch';
 import ImageAttribution from '../components/ImageAttribution';
 import { useArticleLoader } from '../hooks/useArticleLoader';
-import type { ImageSearchResult } from '../types';
+import api from '../services/api';
+import { notify } from '../utils/toast';
+import type { ImageSearchResult, Article } from '../types';
 
 export default function ContentStudio() {
+  const [searchParams] = useSearchParams();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isPreview, setIsPreview] = useState(false);
@@ -14,6 +18,11 @@ export default function ContentStudio() {
   const [showImageSearch, setShowImageSearch] = useState(false);
   
   const { article, isLoading, error } = useArticleLoader();
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Get topic from URL query params (from TrendExplorer)
+  const topicFromUrl = searchParams.get('topic');
 
   // Load article data when fetched from URL param
   useEffect(() => {
@@ -23,9 +32,45 @@ export default function ContentStudio() {
     }
   }, [article]);
 
-  const handleSave = () => {
-    // TODO: Save article to backend
-    console.log('Saving article:', { title, content, featuredImage });
+  const handleSave = async () => {
+    if (!title.trim()) {
+      notify.error('Lütfen bir başlık girin');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const articleData = {
+        title: title.trim(),
+        content,
+        featured_image_url: featuredImage?.url || null,
+        featured_image_attribution: featuredImage ? {
+          photographer: featuredImage.photographer?.name || '',
+          portfolio: featuredImage.photographer?.portfolioUrl || '',
+        } : null,
+      };
+
+      let response;
+
+      if (article?.id) {
+        // Existing article - PUT request
+        response = await api.put(`/articles/${article.id}`, articleData);
+        notify.success('Makale başarıyla güncellendi');
+      } else {
+        // New article - POST request
+        response = await api.post('/articles', articleData);
+        notify.success('Makale başarıyla kaydedildi');
+      }
+
+      console.log('Article saved:', response.data);
+    } catch (err: any) {
+      console.error('Error saving article:', err);
+      const errorMessage = err.response?.data?.error || 'Makale kaydedilirken bir hata oluştu';
+      notify.error(errorMessage);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSelectImage = (image: ImageSearchResult) => {
@@ -94,10 +139,15 @@ export default function ContentStudio() {
           <button
             type="button"
             onClick={handleSave}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            disabled={isSaving}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4" />
-            Kaydet
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {isSaving ? 'Kaydediliyor...' : 'Kaydet'}
           </button>
         </div>
       </div>
@@ -224,6 +274,15 @@ export default function ContentStudio() {
                 <p className="text-text-muted text-sm mt-1">
                   Yapay zeka ile içerik önerileri alın.
                 </p>
+                
+                {/* Pre-filled Topic from TrendExplorer */}
+                {topicFromUrl && (
+                  <div className="mt-3 p-3 bg-primary-500/10 rounded-lg border border-primary-500/20">
+                    <p className="text-xs text-primary-400 uppercase tracking-wide mb-1">Trend Konusu</p>
+                    <p className="text-sm text-text font-medium">{topicFromUrl}</p>
+                  </div>
+                )}
+                
                 <div className="flex flex-wrap gap-2 mt-3">
                   <button
                     type="button"
