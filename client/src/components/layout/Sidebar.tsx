@@ -55,7 +55,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg transition-colors cursor-pointer lg:hidden text-text-muted hover:text-white hover:bg-surface-alt"
+            className="p-1.5 rounded-lg transition-colors cursor-pointer lg:hidden text-text-muted hover:text-white hover:bg-surface-elevated"
             aria-label="Close menu"
           >
             <X className="w-5 h-5" />
@@ -74,7 +74,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer',
                   isActive
                     ? 'bg-primary-600/20 text-primary-400'
-                    : 'text-text-muted hover:text-white hover:bg-surface-alt'
+                    : 'text-text-muted hover:text-white hover:bg-surface-elevated'
                 )
               }
             >
@@ -87,7 +87,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         <div className="p-3 border-t border-border">
           <button
             onClick={() => logout()}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-text-muted hover:text-red-400 hover:bg-surface-alt transition-colors cursor-pointer"
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-text-muted hover:text-red-400 hover:bg-surface-elevated transition-colors cursor-pointer"
           >
             <LogOut className="w-5 h-5" />
             Çıkış Yap
