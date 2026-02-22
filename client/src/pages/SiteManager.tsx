@@ -297,11 +297,13 @@ export default function SiteManager() {
                 </div>
                 <div className="flex gap-1">
                   <button onClick={() => { setEditSite(site); setShowForm(true); }}
-                    className="p-1.5 text-text-muted hover:text-primary-400 hover:bg-surface-alt rounded-lg transition-colors cursor-pointer">
+                    className="p-1.5 text-text-muted hover:text-primary-400 hover:bg-surface-alt rounded-lg transition-colors cursor-pointer"
+                    aria-label="Düzenle">
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button onClick={() => handleDelete(site.id)}
-                    className="p-1.5 text-text-muted hover:text-red-400 hover:bg-surface-alt rounded-lg transition-colors cursor-pointer">
+                    className="p-1.5 text-text-muted hover:text-red-400 hover:bg-surface-alt rounded-lg transition-colors cursor-pointer"
+                    aria-label="Sil">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
