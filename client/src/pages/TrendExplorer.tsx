@@ -209,14 +209,14 @@ export default function TrendExplorer() {
     if (score >= 80) return 'text-emerald-400';
     if (score >= 60) return 'text-cyan-400';
     if (score >= 40) return 'text-amber-400';
-    return 'text-dark-400';
+    return 'text-text-muted';
   };
 
   const getScoreBgColor = (score: number): string => {
     if (score >= 80) return 'bg-emerald-500/20';
     if (score >= 60) return 'bg-cyan-500/20';
     if (score >= 40) return 'bg-amber-500/20';
-    return 'bg-dark-700';
+    return 'bg-surface-elevated';
   };
 
   const formatDate = (dateStr: string): string => {
@@ -230,7 +230,7 @@ export default function TrendExplorer() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Trend Explorer</h1>
-          <p className="text-dark-400 mt-1">Güncel trendleri keşfedin ve analiz edin</p>
+          <p className="text-text-muted mt-1">Güncel trendleri keşfedin ve analiz edin</p>
         </div>
 
         {/* Search Form */}
@@ -252,7 +252,7 @@ export default function TrendExplorer() {
               <button
                 type="button"
                 onClick={handleClearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-dark-400 hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none rounded"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-text-muted hover:text-text transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none rounded"
                 aria-label="Aramayı temizle"
               >
                 <X className="w-4 h-4" aria-hidden="true" />
@@ -315,7 +315,7 @@ export default function TrendExplorer() {
             className="w-10 h-10 text-primary-400 mx-auto mb-4 animate-spin"
             aria-hidden="true"
           />
-          <p className="text-dark-400">Trendler yükleniyor...</p>
+          <p className="text-text-muted">Trendler yükleniyor...</p>
         </div>
       )}
 
@@ -330,7 +330,7 @@ export default function TrendExplorer() {
             <AlertCircle className="w-6 h-6 text-error" aria-hidden="true" />
           </div>
           <h3 className="text-lg font-medium text-white mb-2">Bir hata oluştu</h3>
-          <p className="text-dark-400 mb-4">{error}</p>
+          <p className="text-text-muted mb-4">{error}</p>
           <button
             onClick={() => fetchTrends(selectedRegion)}
             className="btn btn-primary"
@@ -349,7 +349,7 @@ export default function TrendExplorer() {
           <h3 className="text-lg font-medium text-white mb-2">
             {searchQuery ? 'Sonuç bulunamadı' : 'Henüz trend yok'}
           </h3>
-          <p className="text-dark-400">
+          <p className="text-text-muted">
             {searchQuery
               ? `"${searchQuery}" için arama sonucu bulunmuyor.`
               : selectedRegion === 'all'
@@ -367,16 +367,16 @@ export default function TrendExplorer() {
               <h2 className="text-lg font-semibold text-white">
                 İlgi Grafiği: {selectedTrend.topic}
               </h2>
-              <p className="text-sm text-dark-400 mt-1">
+              <p className="text-sm text-text-muted mt-1">
                 Zaman içindeki ilgi trendi
               </p>
             </div>
             <button
               onClick={handleCloseChart}
-              className="p-2 rounded-lg hover:bg-dark-700 cursor-pointer transition-colors"
+              className="p-2 rounded-lg hover:bg-surface-elevated cursor-pointer transition-colors"
               aria-label="Grafiği kapat"
             >
-              <X className="w-5 h-5 text-dark-400" aria-hidden="true" />
+              <X className="w-5 h-5 text-text-muted" aria-hidden="true" />
             </button>
           </div>
 
@@ -435,7 +435,7 @@ export default function TrendExplorer() {
 
           {!chartLoading && !chartError && interestData.length === 0 && (
             <div className="h-[300px] flex items-center justify-center">
-              <p className="text-dark-400">Bu trend için ilgi verisi bulunmuyor</p>
+              <p className="text-text-muted">Bu trend için ilgi verisi bulunmuyor</p>
             </div>
           )}
         </div>
@@ -444,7 +444,7 @@ export default function TrendExplorer() {
       {/* Trends List */}
       {!loading && !error && filteredTrends.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between text-sm text-dark-400 px-1">
+          <div className="flex items-center justify-between text-sm text-text-muted px-1">
             <span>
               {searchQuery
                 ? `"${searchQuery}" için ${filteredTrends.length} sonuç bulundu`
@@ -479,7 +479,7 @@ export default function TrendExplorer() {
                 >
                   <div className="flex items-start sm:items-center gap-4">
                     {/* Rank Number */}
-                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-sm font-medium text-dark-400">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-sm font-medium text-text-muted">
                       {index + 1}
                     </div>
 
@@ -488,7 +488,7 @@ export default function TrendExplorer() {
                       <h3 className="text-white font-medium truncate" title={trend.topic}>
                         {trend.topic}
                       </h3>
-                      <div className="flex items-center gap-3 mt-1 text-sm text-dark-400">
+                      <div className="flex items-center gap-3 mt-1 text-sm text-text-muted">
                         <span className="flex items-center gap-1">
                           <Globe className="w-3.5 h-3.5" aria-hidden="true" />
                           {trend.region || trend.language?.toUpperCase() || 'Global'}
@@ -502,7 +502,7 @@ export default function TrendExplorer() {
                     <div className="flex items-center gap-3 sm:gap-6">
                       {/* News Count */}
                       <div className="text-right hidden sm:block">
-                        <p className="text-xs text-dark-400 uppercase tracking-wide">Haber</p>
+                        <p className="text-xs text-text-muted uppercase tracking-wide">Haber</p>
                         <p className="text-white font-medium tabular-nums">
                           {newsCount > 0 ? newsCount.toLocaleString('tr-TR') : '-'}
                         </p>

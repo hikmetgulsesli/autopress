@@ -327,7 +327,7 @@ export default function Publisher() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Yayıncı</h1>
-          <p className="text-dark-400 mt-1">Makalelerinizi zamanlayın ve yayınlayın</p>
+          <p className="text-text-muted mt-1">Makalelerinizi zamanlayın ve yayınlayın</p>
         </div>
         <button
           onClick={() => setIsScheduleModalOpen(true)}
