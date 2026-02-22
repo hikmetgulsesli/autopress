@@ -207,7 +207,7 @@ export default function ProfileSettings() {
             <button
               type="submit"
               disabled={isProfileSaving}
-              className="px-6 py-2.5 bg-primary-600 hover:bg-primary-500 disabled:bg-surface-alt disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+              className="px-6 py-2.5 bg-primary-600 hover:bg-primary-500 disabled:bg-surface-elevated disabled:cursor-not-allowed text-text font-medium rounded-lg transition-colors flex items-center gap-2"
             >
               {isProfileSaving ? (
                 <>
@@ -317,7 +317,7 @@ export default function ProfileSettings() {
             <button
               type="submit"
               disabled={isPasswordSaving}
-              className="px-6 py-2.5 bg-primary-600 hover:bg-primary-500 disabled:bg-surface-alt disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+              className="px-6 py-2.5 bg-primary-600 hover:bg-primary-500 disabled:bg-surface-elevated disabled:cursor-not-allowed text-text font-medium rounded-lg transition-colors flex items-center gap-2"
             >
               {isPasswordSaving ? (
                 <>
