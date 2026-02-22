@@ -60,10 +60,10 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-900 border border-dark-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-dark-700">
-          <h2 className="text-lg font-semibold text-white">{site ? 'Site Düzenle' : 'Yeni Site Ekle'}</h2>
-          <button onClick={onClose} className="p-1 text-dark-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
+      <div className="bg-surface border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <h2 className="text-lg font-semibold text-text">{site ? 'Site Düzenle' : 'Yeni Site Ekle'}</h2>
+          <button onClick={onClose} className="p-1 text-text-muted hover:text-text cursor-pointer"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
@@ -209,7 +209,7 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
 }
 
 const platformColors: Record<string, string> = { blogger: 'bg-orange-500', wordpress: 'bg-sky-500' };
-const adsenseColors: Record<string, string> = { pending: 'text-dark-400', applied: 'text-yellow-400', approved: 'text-emerald-400', rejected: 'text-red-400' };
+const adsenseColors: Record<string, string> = { pending: 'text-text-muted', applied: 'text-yellow-400', approved: 'text-emerald-400', rejected: 'text-red-400' };
 const adsenseLabels: Record<string, string> = { pending: 'Beklemede', applied: 'Başvuruldu', approved: 'Onaylı', rejected: 'Reddedildi' };
 
 type TestStatus = { type: 'success' | 'error' | null; message: string };
@@ -260,7 +260,7 @@ export default function SiteManager() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Site Yönetimi</h1>
-          <p className="text-dark-400 mt-1">Blogger ve WordPress sitelerinizi yönetin</p>
+          <p className="text-text-muted mt-1">Blogger ve WordPress sitelerinizi yönetin</p>
         </div>
         <button onClick={() => { setEditSite(null); setShowForm(true); }}
           className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors cursor-pointer">
@@ -271,25 +271,25 @@ export default function SiteManager() {
       {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary-400" /></div>
       ) : sites.length === 0 ? (
-        <div className="bg-dark-900 border border-dark-700 rounded-xl p-12 text-center">
-          <Globe className="w-12 h-12 text-dark-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-dark-300">Henüz site eklenmemiş</h3>
-          <p className="text-dark-500 mt-1">İlk sitenizi ekleyerek başlayın</p>
+        <div className="bg-surface border border-border rounded-xl p-12 text-center">
+          <Globe className="w-12 h-12 text-text-subtle mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-text">Henüz site eklenmemiş</h3>
+          <p className="text-text-subtle mt-1">İlk sitenizi ekleyerek başlayın</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sites.map((site) => (
-            <div key={site.id} className="bg-dark-900 border border-dark-700 rounded-xl p-5 hover:border-dark-600 transition-colors">
+            <div key={site.id} className="bg-surface border border-border rounded-xl p-5 hover:border-border transition-colors">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${platformColors[site.platform] || 'bg-dark-600'}`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${platformColors[site.platform] || 'bg-surface-elevated'}`}>
                     <Globe className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">{site.name}</h3>
                     {site.domain && (
                       <a href={`https://${site.domain}`} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-dark-400 hover:text-primary-400 flex items-center gap-1">
+                        className="text-xs text-text-muted hover:text-primary-400 flex items-center gap-1">
                         {site.domain} <ExternalLink className="w-3 h-3" />
                       </a>
                     )}
@@ -297,20 +297,20 @@ export default function SiteManager() {
                 </div>
                 <div className="flex gap-1">
                   <button onClick={() => { setEditSite(site); setShowForm(true); }}
-                    className="p-1.5 text-dark-400 hover:text-primary-400 hover:bg-dark-800 rounded-lg transition-colors cursor-pointer">
+                    className="p-1.5 text-text-muted hover:text-primary-400 hover:bg-surface-elevated rounded-lg transition-colors cursor-pointer">
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button onClick={() => handleDelete(site.id)}
-                    className="p-1.5 text-dark-400 hover:text-red-400 hover:bg-dark-800 rounded-lg transition-colors cursor-pointer">
+                    className="p-1.5 text-text-muted hover:text-red-400 hover:bg-surface-elevated rounded-lg transition-colors cursor-pointer">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
-                <span className="text-xs px-2 py-1 rounded-full bg-dark-800 text-dark-300 capitalize">{site.platform}</span>
-                <span className="text-xs px-2 py-1 rounded-full bg-dark-800 text-dark-300 uppercase">{site.language}</span>
-                {site.niche && <span className="text-xs px-2 py-1 rounded-full bg-dark-800 text-dark-300">{site.niche}</span>}
-                <span className={`text-xs px-2 py-1 rounded-full bg-dark-800 ${adsenseColors[site.adsense_status] || 'text-dark-400'}`}>
+                <span className="text-xs px-2 py-1 rounded-full bg-surface-elevated text-text capitalize">{site.platform}</span>
+                <span className="text-xs px-2 py-1 rounded-full bg-surface-elevated text-text uppercase">{site.language}</span>
+                {site.niche && <span className="text-xs px-2 py-1 rounded-full bg-surface-elevated text-text">{site.niche}</span>}
+                <span className={`text-xs px-2 py-1 rounded-full bg-surface-elevated ${adsenseColors[site.adsense_status] || 'text-text-muted'}`}>
                   AdSense: {adsenseLabels[site.adsense_status] || site.adsense_status}
                 </span>
               </div>
@@ -321,7 +321,7 @@ export default function SiteManager() {
                   onClick={() => handleTestConnection(site)}
                   disabled={testingSiteId === site.id}
                   aria-label="Bağlantıyı Test Et"
-                  className="w-full py-2 px-3 bg-dark-800 hover:bg-dark-700 text-dark-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-2 px-3 bg-surface-elevated hover:bg-surface-alt text-text rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {testingSiteId === site.id ? (
                     <>
