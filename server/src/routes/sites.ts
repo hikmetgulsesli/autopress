@@ -13,7 +13,7 @@ router.get('/', async (_req: AuthRequest, res: Response) => {
     const result = await query('SELECT * FROM sites ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -24,7 +24,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Site bulunamadı' });
     res.json(result.rows[0]);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -42,7 +42,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     res.status(201).json(result.rows[0]);
   } catch (err: any) {
     if (err.code === '23505') return res.status(409).json({ error: 'Bu domain zaten kayıtlı' });
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -62,7 +62,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Site bulunamadı' });
     res.json(result.rows[0]);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -73,7 +73,7 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Site bulunamadı' });
     res.json({ message: 'Site silindi' });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 

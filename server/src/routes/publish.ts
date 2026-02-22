@@ -21,7 +21,7 @@ router.get('/queue', async (_req: AuthRequest, res: Response) => {
     );
     res.json(result.rows);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -44,7 +44,7 @@ router.get('/history', async (_req: AuthRequest, res: Response) => {
     );
     res.json(result.rows);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -59,7 +59,7 @@ router.get('/schedules', async (_req: AuthRequest, res: Response) => {
     );
     res.json(result.rows);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -112,7 +112,7 @@ router.post('/schedule', async (req: AuthRequest, res: Response) => {
       message: 'Makale başarıyla zamanlandı'
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -144,7 +144,7 @@ router.delete('/schedule/:articleId', async (req: AuthRequest, res: Response) =>
       message: 'Zamanlama iptal edildi'
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -186,7 +186,7 @@ router.patch('/schedule/:articleId', async (req: AuthRequest, res: Response) => 
       message: 'Zamanlama güncellendi'
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -256,7 +256,7 @@ router.post('/publish-now', async (req: AuthRequest, res: Response) => {
       }
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 

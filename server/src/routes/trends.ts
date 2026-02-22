@@ -25,11 +25,11 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const params: any[] = [];
     if (language) { sql += ' WHERE language = $1'; params.push(language); }
     sql += ' ORDER BY score DESC LIMIT $' + (params.length + 1);
-    params.push(Number(limit));
+    params.push(Number(limit || 20));
     const result = await query(sql, params);
     res.json(result.rows);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -44,7 +44,7 @@ router.get('/keywords', async (req: AuthRequest, res: Response) => {
     const result = await query(sql, params);
     res.json(result.rows);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -76,7 +76,7 @@ router.get('/search', async (req: AuthRequest, res: Response) => {
     }
     
     sql += ` ORDER BY score DESC LIMIT $${params.length + 1}`;
-    params.push(Number(limit));
+    params.push(Number(limit || 20));
     
     const result = await query(sql, params);
     res.json({ data: result.rows });
@@ -237,7 +237,7 @@ router.get('/trending', async (req: AuthRequest, res: Response) => {
     const result = await getTrendingTopics(
       (region as RegionCode) || 'TR',
       (language as LanguageCode) || 'tr',
-      limit ? Number(limit) : 50
+      limit ? Number(limit || 20) : 50
     );
     
     res.json({ data: result });

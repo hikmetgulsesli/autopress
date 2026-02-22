@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search,
   Link as LinkIcon,
@@ -86,10 +86,37 @@ export default function SEOTools() {
     language: '',
   });
 
+  // Poll running jobs every 5 seconds
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchJobsCallback = useCallback(async () => {
+    try {
+      const response = await api.get('/bulk-seo/jobs');
+      setJobs(response.data.data);
+      return response.data.data;
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to fetch jobs');
+      return [];
+    }
+  }, []);
+
   useEffect(() => {
     fetchSites();
-    fetchJobs();
-  }, []);
+    fetchJobsCallback();
+  }, [fetchJobsCallback]);
+
+  // Auto-poll when there are running/pending jobs
+  useEffect(() => {
+    const hasActiveJobs = jobs.some(j => j.status === 'running' || j.status === 'pending');
+    if (hasActiveJobs) {
+      pollingRef.current = setInterval(() => {
+        fetchJobsCallback();
+      }, 5000);
+    }
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [jobs, fetchJobsCallback]);
 
   useEffect(() => {
     if (activeTab === 'links') {
@@ -99,14 +126,7 @@ export default function SEOTools() {
     }
   }, [activeTab]);
 
-  const fetchJobs = async () => {
-    try {
-      const response = await api.get('/bulk-seo/jobs');
-      setJobs(response.data.data);
-    } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to fetch jobs');
-    }
-  };
+
 
   const fetchBrokenLinks = async () => {
     setLoading(true);
@@ -141,7 +161,7 @@ export default function SEOTools() {
       if (filters.language) params.language = filters.language;
       
       await api.post('/bulk-seo/analyze', params);
-      await fetchJobs();
+      await fetchJobsCallback();
       setActiveTab('jobs');
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Failed to start analysis');
@@ -157,7 +177,7 @@ export default function SEOTools() {
       if (filters.site_id) params.site_id = filters.site_id;
       
       await api.post('/bulk-seo/check-links', params);
-      await fetchJobs();
+      await fetchJobsCallback();
       setActiveTab('jobs');
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Failed to start link checker');
@@ -173,7 +193,7 @@ export default function SEOTools() {
       if (filters.site_id) params.site_id = filters.site_id;
       
       await api.post('/bulk-seo/suggest-links', params);
-      await fetchJobs();
+      await fetchJobsCallback();
       setActiveTab('jobs');
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Failed to start link suggestions');
@@ -681,7 +701,7 @@ export default function SEOTools() {
               İşlem Geçmişi
             </h3>
             <button
-              onClick={fetchJobs}
+              onClick={fetchJobsCallback}
               className="p-2 rounded-lg transition-colors cursor-pointer"
               style={{ color: 'var(--color-text-muted)' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-surface-alt)'}

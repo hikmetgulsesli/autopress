@@ -163,7 +163,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.role }, ...tokens });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -192,7 +192,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
     res.json(result.rows[0]);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -212,7 +212,7 @@ router.post('/logout', authenticate, async (req: AuthRequest, res: Response) => 
     
     res.json({ message: 'Çıkış yapıldı' });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -241,7 +241,7 @@ router.put('/profile', authenticate, validateBody(updateProfileSchema), async (r
 
     res.json(result.rows[0]);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -290,7 +290,7 @@ router.put('/password', authenticate, validateBody(changePasswordSchema), async 
 
     res.json({ message: 'Şifre başarıyla değiştirildi' });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 

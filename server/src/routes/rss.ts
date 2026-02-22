@@ -255,7 +255,7 @@ router.get('/items', validateQuery(rssItemsQuerySchema), async (req: AuthRequest
 
     const result = await getItems({
       feedId: (feedId ? Number(feedId) : undefined),
-      limit: Number(limit),
+      limit: Number(limit || 20),
       offset: Number(offset),
       processed: (processed !== undefined ? processed === 'true' : undefined),
       language: (language ? String(language) : undefined),
@@ -265,7 +265,7 @@ router.get('/items', validateQuery(rssItemsQuerySchema), async (req: AuthRequest
       data: result.items,
       meta: {
         total: result.total,
-        limit: Number(limit),
+        limit: Number(limit || 20),
         offset: Number(offset),
       },
     });

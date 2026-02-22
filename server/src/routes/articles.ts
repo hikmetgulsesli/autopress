@@ -9,7 +9,7 @@ router.use(authenticate);
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const { site_id, status, language, page = '1', limit = '20' } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
+    const offset = (Number(page || 1) - 1) * Number(limit || 20);
     let where = 'WHERE 1=1';
     const params: any[] = [];
     let idx = 1;
@@ -21,14 +21,14 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const countResult = await query(`SELECT COUNT(*) FROM articles a ${where}`, params);
     const total = parseInt(countResult.rows[0].count);
 
-    params.push(Number(limit), offset);
+    params.push(Number(limit || 20), offset);
     const result = await query(
       `SELECT a.*, s.name as site_name FROM articles a LEFT JOIN sites s ON a.site_id = s.id ${where} ORDER BY a.created_at DESC LIMIT $${idx++} OFFSET $${idx}`,
       params
     );
-    res.json({ data: result.rows, total, page: Number(page), limit: Number(limit) });
+    res.json({ data: result.rows, total, page: Number(page || 1), limit: Number(limit || 20) });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -41,7 +41,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Makale bulunamadı' });
     res.json(result.rows[0]);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -61,7 +61,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -86,7 +86,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Makale bulunamadı' });
     res.json(result.rows[0]);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -96,7 +96,7 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Makale bulunamadı' });
     res.json({ message: 'Makale silindi' });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 

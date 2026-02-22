@@ -20,7 +20,7 @@ router.get('/status', async (_req: AuthRequest, res: Response) => {
       queue: stats,
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -31,22 +31,22 @@ router.get('/status', async (_req: AuthRequest, res: Response) => {
 router.get('/queue', async (req: AuthRequest, res: Response) => {
   try {
     const { status, page = '1', limit = '20' } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
+    const offset = (Number(page || 1) - 1) * Number(limit || 20);
 
     const result = await schedulerService.getScheduledArticles(
       status as schedulerService.PublishStatus | undefined,
-      Number(limit),
+      Number(limit || 20),
       offset
     );
 
     res.json({
       data: result.items,
       total: result.total,
-      page: Number(page),
-      limit: Number(limit),
+      page: Number(page || 1),
+      limit: Number(limit || 20),
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -78,7 +78,7 @@ router.post('/schedule', async (req: AuthRequest, res: Response) => {
 
     res.status(201).json(queueItem);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -97,7 +97,7 @@ router.post('/cancel/:id', async (req: AuthRequest, res: Response) => {
       res.status(404).json({ error: 'Scheduled article not found or already processed' });
     }
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -116,7 +116,7 @@ router.post('/retry/:id', async (req: AuthRequest, res: Response) => {
       res.status(404).json({ error: 'Failed publish not found or max attempts reached' });
     }
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -138,7 +138,7 @@ router.post('/process', async (req: AuthRequest, res: Response) => {
       stats,
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -149,7 +149,7 @@ router.post('/process', async (req: AuthRequest, res: Response) => {
 router.get('/history', async (req: AuthRequest, res: Response) => {
   try {
     const { article_id, limit = '50', page = '1' } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
+    const offset = (Number(page || 1) - 1) * Number(limit || 20);
 
     let whereClause = '';
     const params: (number | string)[] = [];
@@ -165,7 +165,7 @@ router.get('/history', async (req: AuthRequest, res: Response) => {
     );
     const total = parseInt(countResult.rows[0].count);
 
-    params.push(Number(limit), offset);
+    params.push(Number(limit || 20), offset);
     const result = await query(
       `SELECT ph.*, a.title as article_title, s.name as site_name 
        FROM publish_history ph 
@@ -180,11 +180,11 @@ router.get('/history', async (req: AuthRequest, res: Response) => {
     res.json({
       data: result.rows,
       total,
-      page: Number(page),
-      limit: Number(limit),
+      page: Number(page || 1),
+      limit: Number(limit || 20),
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -202,7 +202,7 @@ router.get('/schedules', async (_req: AuthRequest, res: Response) => {
     );
     res.json(result.rows);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -227,7 +227,7 @@ router.post('/schedules', async (req: AuthRequest, res: Response) => {
 
     res.status(201).json(result.rows[0]);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -261,7 +261,7 @@ router.put('/schedules/:id', async (req: AuthRequest, res: Response) => {
 
     res.json(result.rows[0]);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -282,7 +282,7 @@ router.delete('/schedules/:id', async (req: AuthRequest, res: Response) => {
 
     res.json({ message: 'Schedule deleted successfully' });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 

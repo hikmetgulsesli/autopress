@@ -23,11 +23,11 @@ router.get('/jobs', validateQuery(bulkJobsQuerySchema), async (req: AuthRequest,
   try {
     const { page, limit } = req.query;
     
-    const { jobs, total } = await bulkSeoService.getBulkJobs(Number(page), Number(limit));
+    const { jobs, total } = await bulkSeoService.getBulkJobs(Number(page || 1), Number(limit || 20));
     
     res.json({
       data: jobs,
-      meta: { page, limit, total, pages: Math.ceil(total / (Number(limit))) },
+      meta: { page, limit, total, pages: Math.ceil(total / (Number(limit || 20))) },
     });
   } catch (err: any) {
     logger.error('Failed to get bulk jobs:', err);
@@ -130,12 +130,12 @@ router.get('/suggestions', validateQuery(linkSuggestionsQuerySchema), async (req
     
     const { suggestions, total } = await bulkSeoService.getLinkSuggestions(
       (article_id ? Number(article_id) : undefined),
-      Number(page),
-      Number(limit));
+      Number(page || 1),
+      Number(limit || 20));
     
     res.json({
       data: suggestions,
-      meta: { page, limit, total, pages: Math.ceil(total / (Number(limit))) },
+      meta: { page, limit, total, pages: Math.ceil(total / (Number(limit || 20))) },
     });
   } catch (err: any) {
     logger.error('Failed to get link suggestions:', err);
@@ -159,14 +159,14 @@ router.get('/broken-links', validateQuery(brokenLinksQuerySchema), async (req: A
   try {
     const { page, limit, type, article_id } = req.query;
     
-    const { links, total } = await bulkSeoService.getBrokenLinks(Number(page), Number(limit), {
+    const { links, total } = await bulkSeoService.getBrokenLinks(Number(page || 1), Number(limit || 20), {
       link_type: type as 'internal' | 'external' | undefined,
       article_id: (article_id ? Number(article_id) : undefined),
     });
     
     res.json({
       data: links,
-      meta: { page, limit, total, pages: Math.ceil(total / (Number(limit))) },
+      meta: { page, limit, total, pages: Math.ceil(total / (Number(limit || 20))) },
     });
   } catch (err: any) {
     logger.error('Failed to get broken links:', err);

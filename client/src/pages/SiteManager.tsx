@@ -224,12 +224,13 @@ export default function SiteManager() {
   useEffect(() => { fetchSites(); }, []);
 
   const handleSave = async (data: Partial<Site>) => {
+    if (testingSiteId) return;
     if (editSite) await updateSite(editSite.id, data);
     else await createSite(data);
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('Bu siteyi silmek istediğinize emin misiniz?')) await deleteSite(id);
+    if (testingSiteId) return; if (confirm('Bu siteyi silmek istediğinize emin misiniz?')) await deleteSite(id);
   };
 
   const handleTestConnection = async (site: Site) => {

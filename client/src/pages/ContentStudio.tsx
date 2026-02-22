@@ -46,6 +46,7 @@ export default function ContentStudio() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadedArticle, setLoadedArticle] = useState<Article | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Set title from topic parameter when no article is being loaded
   useEffect(() => {
@@ -141,6 +142,8 @@ export default function ContentStudio() {
   }, [loadedArticle]);
 
   const handleSave = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     // Calculate word count and reading time
     const text = `${title} ${content}`.trim();
     const wordCount = text ? text.split(/\s+/).filter(w => w.length > 0).length : 0;
@@ -170,6 +173,8 @@ export default function ContentStudio() {
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Bir hata oluştu';
       notify.error(errorMessage);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -290,10 +295,11 @@ export default function ContentStudio() {
           <button
             type="button"
             onClick={handleSave}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            disabled={isSaving}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-400 text-surface hover:bg-primary-500 transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4" />
-            Kaydet
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {isSaving ? 'Kaydediliyor...' : 'Kaydet'}
           </button>
         </div>
       </div>

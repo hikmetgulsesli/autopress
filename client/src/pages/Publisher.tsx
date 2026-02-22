@@ -460,7 +460,7 @@ export default function Publisher() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() =>
-                  setCalendarDate(new Date(calendarDate.setMonth(calendarDate.getMonth() - 1)))
+                  setCalendarDate(prev => { const d = new Date(prev); d.setMonth(d.getMonth() - 1); return d; })
                 }
                 className="p-2 hover:bg-surface rounded-lg transition-colors"
                 aria-label="Önceki ay"
@@ -472,7 +472,7 @@ export default function Publisher() {
               </span>
               <button
                 onClick={() =>
-                  setCalendarDate(new Date(calendarDate.setMonth(calendarDate.getMonth() + 1)))
+                  setCalendarDate(prev => { const d = new Date(prev); d.setMonth(d.getMonth() + 1); return d; })
                 }
                 className="p-2 hover:bg-surface rounded-lg transition-colors"
                 aria-label="Sonraki ay"
@@ -606,7 +606,7 @@ export default function Publisher() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm text-text-muted">
-                          {format(new Date(item.published_at), 'dd MMM yyyy HH:mm', { locale: tr })}
+                          {(() => { try { const d = new Date(item.published_at); return isNaN(d.getTime()) ? '-' : format(d, 'dd MMM yyyy HH:mm', { locale: tr }); } catch { return '-'; } })()}
                         </span>
                       </td>
                     </tr>

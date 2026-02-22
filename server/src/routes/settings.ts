@@ -19,7 +19,7 @@ router.get('/', async (_req: AuthRequest, res: Response) => {
     }
     res.json(settings);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
@@ -39,7 +39,7 @@ router.put('/:key', validateParams(settingKeyParamSchema), validateBody(updateSe
     }
     res.json(result.rows[0]);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 

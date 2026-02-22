@@ -278,11 +278,13 @@ export default function Dashboard() {
   const [adSenseStatuses, setAdSenseStatuses] = useState<AdSenseStatus[]>([]);
   const [chartPeriod, setChartPeriod] = useState<'7d' | '30d'>('7d');
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       setIsLoading(true);
       try {
+        const errors: string[] = [];
         const [
           sitesRes,
           articlesRes,
@@ -290,12 +292,20 @@ export default function Dashboard() {
           trendsRes,
           historyRes,
         ] = await Promise.all([
-          api.get('/sites').catch(() => ({ data: [] })),
-          api.get('/articles?limit=100').catch(() => ({ data: { data: [], total: 0 } })),
-          api.get('/scheduler/queue?status=scheduled').catch(() => ({ data: { data: [], total: 0 } })),
-          api.get('/trends?limit=5').catch(() => ({ data: [] })),
-          api.get('/scheduler/history?limit=100').catch(() => ({ data: { data: [] } })),
+          api.get('/sites').catch((e) => { errors.push('Siteler'); return { data: [] }; }),
+          api.get('/articles?limit=100').catch((e) => { errors.push('Makaleler'); return { data: { data: [], total: 0 } }; }),
+          api.get('/scheduler/queue?status=scheduled').catch((e) => { errors.push('Zamanlama'); return { data: { data: [], total: 0 } }; }),
+          api.get('/trends?limit=5').catch((e) => { errors.push('Trendler'); return { data: [] }; }),
+          api.get('/scheduler/history?limit=100').catch((e) => { errors.push('Yayın geçmişi'); return { data: { data: [] } }; }),
         ]);
+
+        if (errors.length > 0) {
+          setFetchError(errors.length === 5
+            ? 'Sunucuya bağlanılamadı. Lütfen daha sonra tekrar deneyin.'
+            : `Bazı veriler yüklenemedi: ${errors.join(', ')}`);
+        } else {
+          setFetchError(null);
+        }
 
         const sites: Site[] = Array.isArray(sitesRes.data) ? sitesRes.data : [];
         const articles: Article[] = articlesRes.data?.data || [];
@@ -336,8 +346,11 @@ export default function Dashboard() {
             dayEnd.setDate(dayEnd.getDate() + 1);
 
             const count = history.filter((h: { published_at: string }) => {
-              const pubDate = new Date(h.published_at);
-              return pubDate >= dayStart && pubDate < dayEnd;
+              if (!h.published_at) return false;
+              try {
+                const pubDate = new Date(h.published_at);
+                return !isNaN(pubDate.getTime()) && pubDate >= dayStart && pubDate < dayEnd;
+              } catch { return false; }
             }).length;
 
             data.push({
@@ -375,6 +388,7 @@ export default function Dashboard() {
         setAdSenseStatuses(adSenseData);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
+        setFetchError('Dashboard verileri yüklenirken bir hata oluştu');
       } finally {
         setIsLoading(false);
       }
@@ -413,6 +427,14 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold text-text">Dashboard</h1>
         <p className="text-text-muted mt-1">Genel bakış ve istatistikler</p>
       </div>
+
+      {/* Error Banner */}
+      {fetchError && (
+        <div className="flex items-center gap-3 p-4 bg-error/10 border border-error/30 rounded-xl">
+          <AlertCircle className="w-5 h-5 text-error flex-shrink-0" />
+          <p className="text-sm text-error">{fetchError}</p>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
