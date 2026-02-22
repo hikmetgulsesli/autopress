@@ -219,7 +219,7 @@ export default function ContentStudio() {
           <h1 className="text-2xl font-bold text-white">
             {loadedArticle ? 'Makale Düzenle' : topicParam ? `Makale Oluştur: ${topicParam}` : 'İçerik Stüdyosu'}
           </h1>
-          <p className="text-dark-400 mt-1">AI ile SEO uyumlu içerik üretin</p>
+          <p className="text-text-muted mt-1">AI ile SEO uyumlu içerik üretin</p>
 
           {/* Site and Language Selection (US-007) */}
           <div className="flex items-center gap-3 mt-4">
