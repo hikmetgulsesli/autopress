@@ -63,7 +63,7 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
       <div className="bg-surface border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-lg font-semibold text-text">{site ? 'Site Düzenle' : 'Yeni Site Ekle'}</h2>
-          <button onClick={onClose} className="p-1 text-text-muted hover:text-text cursor-pointer"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1 text-text-muted hover:text-text cursor-pointer" aria-label="Kapat"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>

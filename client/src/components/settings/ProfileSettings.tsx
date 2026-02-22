@@ -135,14 +135,14 @@ export default function ProfileSettings() {
   return (
     <div className="space-y-8">
       {/* Profile Information Section */}
-      <section className="bg-dark-800/50 rounded-xl border border-dark-700 p-6">
+      <section className="bg-surface-alt/50 rounded-xl border border-border p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 bg-primary-600/20 rounded-lg flex items-center justify-center">
             <User className="w-5 h-5 text-primary-400" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">Profil Bilgileri</h3>
-            <p className="text-sm text-dark-400">Kişisel bilgilerinizi güncelleyin</p>
+            <h3 className="text-lg font-semibold text-text">Profil Bilgileri</h3>
+            <p className="text-sm text-text-muted">Kişisel bilgilerinizi güncelleyin</p>
           </div>
         </div>
 
@@ -157,7 +157,7 @@ export default function ProfileSettings() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Name Field */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-dark-200 mb-2">
+              <label htmlFor="name" className="block text-sm font-medium text-text-muted mb-2">
                 Ad Soyad
               </label>
               <input
@@ -165,8 +165,8 @@ export default function ProfileSettings() {
                 id="name"
                 value={profileData.name}
                 onChange={(e) => setProfileData({ name: e.target.value })}
-                className={`w-full px-4 py-2.5 bg-dark-900 border rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all ${
-                  errors.name ? 'border-red-500 focus:border-red-500' : 'border-dark-600 focus:border-primary-500'
+                className={`w-full px-4 py-2.5 bg-surface-alt border border-border rounded-lg text-text placeholder-text-subtle focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all ${
+                  errors.name ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-primary-400'
                 }`}
                 placeholder="Adınızı girin"
                 autoComplete="name"
@@ -181,7 +181,7 @@ export default function ProfileSettings() {
 
             {/* Email Field (Read-only) */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-dark-200 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-text-muted mb-2">
                 Email Adresi
               </label>
               <input
@@ -189,10 +189,10 @@ export default function ProfileSettings() {
                 id="email"
                 value={user?.email || ''}
                 disabled
-                className="w-full px-4 py-2.5 bg-dark-900/50 border border-dark-600 rounded-lg text-dark-400 cursor-not-allowed"
+                className="w-full px-4 py-2.5 bg-surface-alt/50 border border-border rounded-lg text-text-muted cursor-not-allowed"
                 placeholder="email@example.com"
               />
-              <p className="mt-1.5 text-xs text-dark-500">Email adresi değiştirilemez</p>
+              <p className="mt-1.5 text-xs text-text-subtle">Email adresi değiştirilemez</p>
             </div>
           </div>
 
@@ -207,7 +207,7 @@ export default function ProfileSettings() {
             <button
               type="submit"
               disabled={isProfileSaving}
-              className="px-6 py-2.5 bg-primary-600 hover:bg-primary-500 disabled:bg-dark-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+              className="px-6 py-2.5 bg-primary-600 hover:bg-primary-500 disabled:bg-surface-elevated disabled:cursor-not-allowed text-text font-medium rounded-lg transition-colors flex items-center gap-2"
             >
               {isProfileSaving ? (
                 <>
@@ -223,14 +223,14 @@ export default function ProfileSettings() {
       </section>
 
       {/* Change Password Section */}
-      <section className="bg-dark-800/50 rounded-xl border border-dark-700 p-6">
+      <section className="bg-surface-alt/50 rounded-xl border border-border p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 bg-primary-600/20 rounded-lg flex items-center justify-center">
             <Lock className="w-5 h-5 text-primary-400" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">Şifre Değiştir</h3>
-            <p className="text-sm text-dark-400">Hesap güvenliğiniz için şifrenizi düzenli olarak değiştirin</p>
+            <h3 className="text-lg font-semibold text-text">Şifre Değiştir</h3>
+            <p className="text-sm text-text-muted">Hesap güvenliğiniz için şifrenizi düzenli olarak değiştirin</p>
           </div>
         </div>
 
@@ -245,7 +245,7 @@ export default function ProfileSettings() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Current Password Field */}
             <div>
-              <label htmlFor="currentPassword" className="block text-sm font-medium text-dark-200 mb-2">
+              <label htmlFor="currentPassword" className="block text-sm font-medium text-text-muted mb-2">
                 Mevcut Şifre
               </label>
               <div className="relative">
@@ -254,8 +254,8 @@ export default function ProfileSettings() {
                   id="currentPassword"
                   value={passwordData.currentPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                  className={`w-full px-4 py-2.5 bg-dark-900 border rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all pr-10 ${
-                    errors.currentPassword ? 'border-red-500 focus:border-red-500' : 'border-dark-600 focus:border-primary-500'
+                  className={`w-full px-4 py-2.5 bg-surface-alt border border-border rounded-lg text-text placeholder-text-subtle focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all pr-10 ${
+                    errors.currentPassword ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-primary-400'
                   }`}
                   placeholder="Mevcut şifrenizi girin"
                   autoComplete="current-password"
@@ -263,7 +263,7 @@ export default function ProfileSettings() {
                 <button
                   type="button"
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-dark-200 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
                   aria-label={showCurrentPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
                 >
                   {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -279,7 +279,7 @@ export default function ProfileSettings() {
 
             {/* New Password Field */}
             <div>
-              <label htmlFor="newPassword" className="block text-sm font-medium text-dark-200 mb-2">
+              <label htmlFor="newPassword" className="block text-sm font-medium text-text-muted mb-2">
                 Yeni Şifre
               </label>
               <div className="relative">
@@ -288,8 +288,8 @@ export default function ProfileSettings() {
                   id="newPassword"
                   value={passwordData.newPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  className={`w-full px-4 py-2.5 bg-dark-900 border rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all pr-10 ${
-                    errors.newPassword ? 'border-red-500 focus:border-red-500' : 'border-dark-600 focus:border-primary-500'
+                  className={`w-full px-4 py-2.5 bg-surface-alt border border-border rounded-lg text-text placeholder-text-subtle focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all pr-10 ${
+                    errors.newPassword ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-primary-400'
                   }`}
                   placeholder="Yeni şifrenizi girin"
                   autoComplete="new-password"
@@ -297,7 +297,7 @@ export default function ProfileSettings() {
                 <button
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-dark-200 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
                   aria-label={showNewPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
                 >
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -309,7 +309,7 @@ export default function ProfileSettings() {
                   {errors.newPassword}
                 </p>
               )}
-              <p className="mt-1.5 text-xs text-dark-500">En az 8 karakter olmalıdır</p>
+              <p className="mt-1.5 text-xs text-text-subtle">En az 8 karakter olmalıdır</p>
             </div>
           </div>
 
@@ -317,7 +317,7 @@ export default function ProfileSettings() {
             <button
               type="submit"
               disabled={isPasswordSaving}
-              className="px-6 py-2.5 bg-primary-600 hover:bg-primary-500 disabled:bg-dark-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+              className="px-6 py-2.5 bg-primary-600 hover:bg-primary-500 disabled:bg-surface-elevated disabled:cursor-not-allowed text-text font-medium rounded-lg transition-colors flex items-center gap-2"
             >
               {isPasswordSaving ? (
                 <>
