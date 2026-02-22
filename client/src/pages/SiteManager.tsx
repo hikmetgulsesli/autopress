@@ -63,7 +63,7 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
       <div className="bg-surface border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-lg font-semibold text-text">{site ? 'Site Düzenle' : 'Yeni Site Ekle'}</h2>
-          <button onClick={onClose} className="p-1 text-text-muted hover:text-text cursor-pointer"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1 text-text-muted hover:text-text cursor-pointer" aria-label="Kapat"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
@@ -198,7 +198,7 @@ function SiteForm({ site, onClose, onSave }: { site?: Site | null; onClose: () =
           )}
 
           <button type="submit" disabled={saving}
-            className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer">
+            className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-text rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer">
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
             {site ? 'Güncelle' : 'Site Ekle'}
           </button>
@@ -259,11 +259,11 @@ export default function SiteManager() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Site Yönetimi</h1>
+          <h1 className="text-2xl font-bold text-text">Site Yönetimi</h1>
           <p className="text-text-muted mt-1">Blogger ve WordPress sitelerinizi yönetin</p>
         </div>
         <button onClick={() => { setEditSite(null); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors cursor-pointer">
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-text rounded-lg font-medium transition-colors cursor-pointer">
           <Plus className="w-4 h-4" /> Yeni Site
         </button>
       </div>
@@ -279,14 +279,14 @@ export default function SiteManager() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sites.map((site) => (
-            <div key={site.id} className="bg-surface border border-border rounded-xl p-5 hover:border-border transition-colors">
+            <div key={site.id} className="bg-surface border border-border rounded-xl p-5 hover:border-border-subtle transition-colors">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${platformColors[site.platform] || 'bg-surface-elevated'}`}>
-                    <Globe className="w-5 h-5 text-white" />
+                    <Globe className="w-5 h-5 text-text" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white">{site.name}</h3>
+                    <h3 className="font-semibold text-text">{site.name}</h3>
                     {site.domain && (
                       <a href={`https://${site.domain}`} target="_blank" rel="noopener noreferrer"
                         className="text-xs text-text-muted hover:text-primary-400 flex items-center gap-1">
@@ -297,20 +297,22 @@ export default function SiteManager() {
                 </div>
                 <div className="flex gap-1">
                   <button onClick={() => { setEditSite(site); setShowForm(true); }}
-                    className="p-1.5 text-text-muted hover:text-primary-400 hover:bg-surface-elevated rounded-lg transition-colors cursor-pointer">
+                    className="p-1.5 text-text-muted hover:text-primary-400 hover:bg-surface-elevated rounded-lg transition-colors cursor-pointer"
+                    aria-label="Düzenle">
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button onClick={() => handleDelete(site.id)}
-                    className="p-1.5 text-text-muted hover:text-red-400 hover:bg-surface-elevated rounded-lg transition-colors cursor-pointer">
+                    className="p-1.5 text-text-muted hover:text-red-400 hover:bg-surface-elevated rounded-lg transition-colors cursor-pointer"
+                    aria-label="Sil">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
-                <span className="text-xs px-2 py-1 rounded-full bg-surface-elevated text-text capitalize">{site.platform}</span>
-                <span className="text-xs px-2 py-1 rounded-full bg-surface-elevated text-text uppercase">{site.language}</span>
-                {site.niche && <span className="text-xs px-2 py-1 rounded-full bg-surface-elevated text-text">{site.niche}</span>}
-                <span className={`text-xs px-2 py-1 rounded-full bg-surface-elevated ${adsenseColors[site.adsense_status] || 'text-text-muted'}`}>
+                <span className="text-xs px-2 py-1 rounded-full bg-surface-alt text-text capitalize">{site.platform}</span>
+                <span className="text-xs px-2 py-1 rounded-full bg-surface-alt text-text uppercase">{site.language}</span>
+                {site.niche && <span className="text-xs px-2 py-1 rounded-full bg-surface-alt text-text">{site.niche}</span>}
+                <span className={`text-xs px-2 py-1 rounded-full bg-surface-alt ${adsenseColors[site.adsense_status] || 'text-text-muted'}`}>
                   AdSense: {adsenseLabels[site.adsense_status] || site.adsense_status}
                 </span>
               </div>
